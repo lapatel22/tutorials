@@ -1,6 +1,7 @@
 ---
 title: "Dataframe Manipulation in R"
 format: html
+output: github_document
 toc: true
 code-overflow: wrap
 theme: cosmo
