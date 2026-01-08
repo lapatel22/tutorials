@@ -1,32 +1,98 @@
----
-title: "ggplot_quarto"
-format: gfm
-embed-resources: true
-toc: true
-theme: cosmo
-code-overflow: wrap
----
+# ggplot_quarto
 
-```{r setup, include=FALSE, message=FALSE, warning = FALSE}
-knitr::opts_chunk$set(echo = TRUE)
 
-library(readxl)
-library(tidyverse)
-theme_set(theme_bw())
-```
+- [Importing Data](#importing-data)
+  - [From excel](#from-excel)
+  - [From csv/tsv](#from-csvtsv)
+  - [Hiding Code](#hiding-code)
+- [Data cleanup](#data-cleanup)
+  - [Remove a pattern from a column
+    name](#remove-a-pattern-from-a-column-name)
+  - [TidyR](#tidyr)
+    - [`gather()` (outdated, use pivot_longer
+      now!)](#gather-outdated-use-pivot_longer-now)
+    - [`pivot_longer()`](#pivot_longer)
+- [Base Plots](#base-plots)
+  - [Line](#line)
+  - [Histogram](#histogram)
+  - [Pie](#pie)
+  - [Scatterplot](#scatterplot)
+  - [Density Scatterplots](#density-scatterplots)
+    - [2D Density plot with Hex bins](#2d-density-plot-with-hex-bins)
+    - [2d distribution with geom_density_2d or
+      stat_density_2d](#2d-distribution-with-geom_density_2d-or-stat_density_2d)
+  - [Scatterplot + Smoothing Line](#scatterplot--smoothing-line)
+  - [Add Linear model](#add-linear-model)
+  - [Text Scatter Plot](#text-scatter-plot)
+  - [Barplots - Stacked](#barplots---stacked)
+    - [Manual Color Scheme and
+      Labeling](#manual-color-scheme-and-labeling)
+  - [Barplots - side by side](#barplots---side-by-side)
+  - [Violin Plot](#violin-plot)
+  - [Dotplot (2 category variables)](#dotplot-2-category-variables)
+  - [Ridgeline](#ridgeline)
+  - [Marginal Histograms](#marginal-histograms)
+- [Add-ons](#add-ons)
+  - [Set Properties to Categorical
+    Variable](#set-properties-to-categorical-variable)
+  - [Faceting](#faceting)
+    - [Subplots based on a categorical
+      variable](#subplots-based-on-a-categorical-variable)
+    - [Subplots in columns and rows (split by 2
+      variables)](#subplots-in-columns-and-rows-split-by-2-variables)
+    - [Reordering subplots:](#reordering-subplots)
+    - [faceting other plot types:](#faceting-other-plot-types)
+    - [Faceting and zooming on subset of
+      plot](#faceting-and-zooming-on-subset-of-plot)
+  - [Positioning](#positioning)
+    - [Scatterplot positioning](#scatterplot-positioning)
+    - [Legend positioning](#legend-positioning)
+  - [Plot on log scale](#plot-on-log-scale)
+  - [Set x and y axes](#set-x-and-y-axes)
+    - [Strategy 1: Scale_x_continuous](#strategy-1-scale_x_continuous)
+    - [Strategy 2: coord_cartesian](#strategy-2-coord_cartesian)
+  - [Add regression line](#add-regression-line)
+  - [Add x = y line](#add-x--y-line)
+  - [Manual tick lines](#manual-tick-lines)
+- [Coloring](#coloring)
+  - [`Viridis` Colorblind-friendly
+    library](#viridis-colorblind-friendly-library)
+    - [Continuous Color Schemes](#continuous-color-schemes)
+    - [Discrete Color Schemes](#discrete-color-schemes)
+  - [R Color Brewer](#r-color-brewer)
+  - [non Rcolorbrewer palettes](#non-rcolorbrewer-palettes)
+  - [Manual Color Scheme and
+    Labeling](#manual-color-scheme-and-labeling-1)
+- [Labels](#labels)
+  - [custom legend labels](#custom-legend-labels)
+  - [rotate labels](#rotate-labels)
+  - [Format Date Labels](#format-date-labels)
+  - [format axes numbers](#format-axes-numbers)
+    - [sci notation -\> full numbers](#sci-notation---full-numbers)
+    - [full numbers -\> Add commas](#full-numbers---add-commas)
+    - [Full numbers -\> Millions or
+      Billions](#full-numbers---millions-or-billions)
+  - [Linebreak in plot labels](#linebreak-in-plot-labels)
+- [Combining plots](#combining-plots)
+  - [GridExtra - Gridarrange](#gridextra---gridarrange)
 
 # Importing Data
 
 ## From excel
-```{r} 
+
+``` r
 #dataframe <- read_excel("~/Research/path/to/folder/file.xlsx")
 #View(dataframe)
 ```
 
 ## From csv/tsv
-Use read.table function: first argument specify path to file, sep argument tells R what separates the columns of your data (space, comma, or tab). Example below is for tab separated TSV. header = T (header = True) means the first row is the headers for columns. 
 
-```{r, eval = FALSE} 
+Use read.table function: first argument specify path to file, sep
+argument tells R what separates the columns of your data (space, comma,
+or tab). Example below is for tab separated TSV. header = T (header =
+True) means the first row is the headers for columns.
+
+``` r
 RGFP_input_tagLen <- read.table("~/Research/LH_57_csRNA/Hela_sync_RGFP_input/tagLengthDistribution.txt", 
       sep="\t", header = T)
 ```
@@ -35,17 +101,18 @@ RGFP_input_tagLen <- read.table("~/Research/LH_57_csRNA/Hela_sync_RGFP_input/tag
 
 You can embed plots without showing code:
 
-```{r pressure, echo=FALSE}
-plot(pressure)
-```
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+![](GGplot_quarto_files/figure-commonmark/pressure-1.png)
+
+Note that the `echo = FALSE` parameter was added to the code chunk to
+prevent printing of the R code that generated the plot.
 
 # Data cleanup
 
 ## Remove a pattern from a column name
 
-Below example replaces "_synchela_" with "_"
-```{r}
+Below example replaces “*synchela*” with “\_”
+
+``` r
 #dataframe %>% rename_with(~ gsub("_synchela_", "_", .x), contains("_synchela"))
 ```
 
@@ -53,18 +120,19 @@ Below example replaces "_synchela_" with "_"
 
 ### `gather()` (outdated, use pivot_longer now!)
 
-Convention: `Gather(new independent var, new dependent var, column1, column2, column3, columnN)`
+Convention:
+`Gather(new independent var, new dependent var, column1, column2, column3, columnN)`
 
- - puts column names in *new independent var* 
- - values in *new dependent var*
+- puts column names in *new independent var*
+- values in *new dependent var*
 
-```{r, eval = FALSE}
+``` r
 LH51_hg38only_phredtrim_mapq_tidy <- LH51_phredtrim_hg38_MAPQscores %>% gather(Sample, Counts, a_count, b_count, c_count, d_count, q_count, r_count, s_count, t_count)
 ```
 
 ### `pivot_longer()`
 
-```{r, eval = FALSE}
+``` r
 counts_megapeaks_hg38_LH56_tidy <- counts_megapeaks_hg38_LH56_clean %>% 
   select(PeakID, contains("Tag")) %>%    
   pivot_longer(
@@ -79,15 +147,17 @@ counts_megapeaks_hg38_LH56_tidy <- counts_megapeaks_hg38_LH56_clean %>%
 
 > `Plot_line <- ggplot(data=dataframe, aes(x=xvariable)) + geom_line(aes(y=yvariable1, color= ”name/hexcode”)), + geom_line(aes(y=yvariable2, color= “name/hexcode”)), + geom_line(etc.) + labs (x = “X Axis Label”, y = “Y Axis Label”, title = “Plot title”)`
 
-```{r, fig.width=4, fig.height=3}
+``` r
 ggplot(mtcars, aes(wt, mpg, group = cyl)) + 
   geom_line(aes(color = cyl)) + 
   labs(title = "Miles per Gallon vs Car Weight, Colored by # of Cylinders")
 ```
 
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-6-1.png)
+
 ## Histogram
 
-```{r, fig.width=4, fig.height=3}
+``` r
 density_hist <- ggplot(data=iris, aes(x=Sepal.Width, fill=Species))
 density_hist + 
   geom_density(stat="density", alpha=I(0.2)) + 
@@ -95,15 +165,31 @@ density_hist +
   ylab("Density") + 
   ggtitle("Histogram & Density Curve of Sepal Width")
 ```
+
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-7-1.png)
+
 ## Pie
 
-```{r}
+``` r
 input_presence <- data.frame(input_status = c("sufficient inputs", "some inputs missing", "no inputs present"), paper_count = c(27, 12, 14))
 ```
 
-```{r, fig.width= 5, fig.height = 4}
+``` r
 library(scales)
+```
 
+
+    Attaching package: 'scales'
+
+    The following object is masked from 'package:purrr':
+
+        discard
+
+    The following object is masked from 'package:readr':
+
+        col_factor
+
+``` r
 input_piechart <- ggplot(input_presence, aes(x="", y= paper_count, fill=input_status)) +
   geom_bar(stat="identity", width=1, alpha = 0.9) +
   coord_polar("y", start=0) +
@@ -117,23 +203,34 @@ input_piechart <- ggplot(input_presence, aes(x="", y= paper_count, fill=input_st
 input_piechart
 ```
 
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-9-1.png)
+
 ## Scatterplot
-```{r, fig.width=6, fig.height=4}
+
+``` r
 ggplot(diamonds, aes(carat, price, color = clarity)) +
   geom_point()
 ```
 
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-10-1.png)
+
 Remove outline of point (for scatterplots with many overlapping points)
-```{r, fig.width=6, fig.height=4}
+
+``` r
 ggplot(diamonds, aes(carat, price, color = clarity)) +
   geom_point(stroke = NA, alpha = 0.3)
 ```
 
-NOTE: for scatterplots the title in labs() must come first and be lower case
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-11-1.png)
+
+NOTE: for scatterplots the title in labs() must come first and be lower
+case
 
 ## Density Scatterplots
+
 Make some data
-```{r, fig.width=4, fig.height=3}
+
+``` r
 # Data
 a <- data.frame(x=rnorm(20000, 10, 1.9), y=rnorm(20000, 10, 1.2) )
 b <- data.frame(x=rnorm(20000, 14.5, 1.9), y=rnorm(20000, 14.5, 1.9) )
@@ -145,21 +242,27 @@ ggplot(data, aes(x=x, y=y) ) +
   geom_point()
 ```
 
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-12-1.png)
+
 In the above graph, where is the highest density of points?
 
-Density plots - prevent overplotting
-Instead we should plot a 2D histogram
+Density plots - prevent overplotting Instead we should plot a 2D
+histogram
 
 Default:
-```{r, fig.width=4, fig.height=3}
+
+``` r
 # 2d histogram with default option
 ggplot(data, aes(x=x, y=y) ) +
   geom_bin2d() +
   theme_bw()
 ```
 
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-13-1.png)
+
 Make it pretty:
-```{r, fig.width=4, fig.height=3}
+
+``` r
 # Bin size control + color palette
 ggplot(data, aes(x=x, y=y) ) +
   geom_bin2d(bins = 70) +
@@ -167,44 +270,71 @@ ggplot(data, aes(x=x, y=y) ) +
   theme_bw()
 ```
 
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-14-1.png)
+
 ### 2D Density plot with Hex bins
 
-```{r, fig.width=4, fig.height=3}
+``` r
 ggplot(data, aes(x=x, y=y)) +
   geom_hex() +
   theme_bw()
 ```
 
-```{r, fig.width=4, fig.height=3}
+    Warning: Computation failed in `stat_binhex()`.
+    Caused by error in `compute_group()`:
+    ! The package "hexbin" is required for `stat_bin_hex()`.
+
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-15-1.png)
+
+``` r
 # Bin size control + color palette
 ggplot(data, aes(x=x, y=y)) + 
   geom_hex(bins = 70) + 
   scale_fill_continuous(type = "viridis")
 ```
 
+    Warning: Computation failed in `stat_binhex()`.
+    Caused by error in `compute_group()`:
+    ! The package "hexbin" is required for `stat_bin_hex()`.
+
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-16-1.png)
+
 ### 2d distribution with geom_density_2d or stat_density_2d
 
 Contour only
-```{r, fig.width=4, fig.height=3}
+
+``` r
 ggplot(data, aes(x=x, y=y) ) +
   geom_density_2d()
 ```
 
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-17-1.png)
+
 Area only
-```{r, fig.width=4, fig.height=3}
+
+``` r
 ggplot(data, aes(x=x, y=y) ) +
   stat_density_2d(aes(fill = ..level..), geom = "polygon")
 ```
 
+    Warning: The dot-dot notation (`..level..`) was deprecated in ggplot2 3.4.0.
+    ℹ Please use `after_stat(level)` instead.
+
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-18-1.png)
+
 Area + Contour
-```{r, fig.width=4, fig.height=3}
+
+``` r
 ggplot(data, aes(x=x, y=y) ) +
   stat_density_2d(aes(fill = ..level..), 
                   geom = "polygon", colour="white")
 ```
 
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-19-1.png)
+
 Using Raster
-```{r, fig.width=4, fig.height=3}
+
+``` r
 ggplot(data, aes(x=x, y=y) ) +
   stat_density_2d(aes(fill = ..density..), geom = "raster", contour = FALSE) +
   scale_x_continuous(expand = c(0, 0)) +
@@ -214,27 +344,37 @@ ggplot(data, aes(x=x, y=y) ) +
   )
 ```
 
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-20-1.png)
+
 ## Scatterplot + Smoothing Line
 
-```{r, fig.width=4, fig.height=3}
+``` r
 ggplot(diamonds, aes(carat, price, color = clarity)) +
   geom_point() +
   geom_smooth() + 
   labs(title = "Price of Diamonds by Cut and Clarity")
 ```
 
+    `geom_smooth()` using method = 'gam' and formula = 'y ~ s(x, bs = "cs")'
+
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-21-1.png)
+
 ## Add Linear model
 
-```{r, fig.width=4, fig.height=3}
+``` r
 ggplot(diamonds, aes(carat, price, color = clarity)) +
   geom_point(alpha = 0.1) +
   geom_smooth(method = "lm") + 
   labs(title = "Price of Diamonds by Cut and Clarity")
 ```
 
+    `geom_smooth()` using formula = 'y ~ x'
+
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-22-1.png)
+
 ## Text Scatter Plot
 
-```{r, fig.width=4, fig.height=3}
+``` r
 # Base layer
 plt_mpg_vs_wt <- ggplot(mtcars, aes(wt, mpg))
 
@@ -244,25 +384,37 @@ plt_mpg_vs_wt +
   labs(title = "MPG vs weight for Cars")
 ```
 
-Above plot is the weight of the car vs the miles per gallon, with each “point” being labeled with the number of cylinders the car has (a categorical variable, values either 4, 6 or 8)
+    Warning: Use of `mtcars$cyl` is discouraged.
+    ℹ Use `cyl` instead.
+
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-23-1.png)
+
+Above plot is the weight of the car vs the miles per gallon, with each
+“point” being labeled with the number of cylinders the car has (a
+categorical variable, values either 4, 6 or 8)
 
 Label points with text of row names:
-```{r, fig.width=4, fig.height=3}
+
+``` r
 ggplot(mtcars, aes(wt, mpg, color = cyl)) + 
   geom_text(label = rownames(mtcars), color = "red")
 ```
 
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-24-1.png)
+
 ## Barplots - Stacked
 
-```{r, fig.width=4, fig.height=3}
+``` r
 ggplot(iris, aes(Sepal.Length, fill = Species)) +
   geom_bar() + 
   labs(x = "Species", y = "Sepal Length")
 ```
 
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-25-1.png)
+
 ### Manual Color Scheme and Labeling
 
-```{r, fig.width=4, fig.height=3}
+``` r
 palette <- c(setosa = "#387EB8", versicolor = "#D11A1C", virginica = "#314EB9")
 ggplot(iris, aes(Sepal.Length, fill = Species)) +
   geom_bar() +
@@ -271,9 +423,11 @@ ggplot(iris, aes(Sepal.Length, fill = Species)) +
   scale_fill_manual("Transmission", values = palette)
 ```
 
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-26-1.png)
+
 ## Barplots - side by side
 
-```{r, fig.width=4, fig.height=3}
+``` r
 # Set the position
 ggplot(iris, aes(Sepal.Length, fill = Species)) +
   geom_bar(position = "dodge") +
@@ -281,15 +435,20 @@ ggplot(iris, aes(Sepal.Length, fill = Species)) +
   scale_fill_manual("Species", values = palette) 
 ```
 
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-27-1.png)
+
 ## Violin Plot
 
-```{r, fig.width=4, fig.height=3}
+``` r
 ggplot(data = diamonds, aes(x=cut, y=price, fill = cut)) + 
   geom_violin()
 ```
 
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-28-1.png)
+
 ## Dotplot (2 category variables)
-```{r, fig.width=4, fig.height=3, eval = FALSE}
+
+``` r
 setwd("~/Research/R_for_fun/data_vis")
 species <- read_csv("national_parks_biodiv/species.csv")
 species_clean <- species %>% 
@@ -311,36 +470,50 @@ ggplot(data = acadia) +
 
 ## Ridgeline
 
-```{r}
+``` r
 library(ggridges)
 ```
 
-In most cases you won't need a legend here since each row of the ridgeline plot is clearly visible. Repress the legend with `theme(legend.position = "none")`
+In most cases you won’t need a legend here since each row of the
+ridgeline plot is clearly visible. Repress the legend with
+`theme(legend.position = "none")`
 
-```{r, fig.width=5, fig.height=4}
+``` r
 ggplot(diamonds) + 
   aes(x = price, y = clarity, fill = clarity) + 
   geom_density_ridges() + 
   theme(legend.position = "none")
 ```
 
-Can also make a histogram: 
+    Picking joint bandwidth of 403
 
-```{r, fig.width=5, fig.height=4}
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-31-1.png)
+
+Can also make a histogram:
+
+``` r
 ggplot(diamonds) + 
   aes(x = price, y = clarity, fill = clarity) + 
   geom_density_ridges(alpha = 0.6, stat = "binline", bins = 50) + 
   theme(legend.position = "none")
 ```
 
-You can also map the color `fill` to a numeric variable (for instance the price on the x axis). There are two requirements: 
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-32-1.png)
 
-1. Use `geom_density_ridges_gradient()` or `geom_ridgeline_gradient()`
-2. Instead of direcly settging the fill to a variable (ex. `fill = price` in the example below) you have to set it to call the variable you have already defined. i.e. if you want fill = price, and x = price, then fill = stat(x). 
+You can also map the color `fill` to a numeric variable (for instance
+the price on the x axis). There are two requirements:
 
-Also note I used log(price) because otherwise the upper outliers in price warp the scale and no changes in color are noticeable (i.e. purely for illustrative purposes)
+1.  Use `geom_density_ridges_gradient()` or `geom_ridgeline_gradient()`
+2.  Instead of direcly settging the fill to a variable (ex.
+    `fill = price` in the example below) you have to set it to call the
+    variable you have already defined. i.e. if you want fill = price,
+    and x = price, then fill = stat(x).
 
-```{r, fig.width=5, fig.height=4}
+Also note I used log(price) because otherwise the upper outliers in
+price warp the scale and no changes in color are noticeable (i.e. purely
+for illustrative purposes)
+
+``` r
 ggplot(diamonds) + 
   aes(x = log(price), y = clarity, fill = stat(x)) + 
   geom_density_ridges_gradient(scale = 2) + 
@@ -348,13 +521,20 @@ ggplot(diamonds) +
   scale_fill_distiller("RdYlBu")
 ```
 
-## Marginal Histograms 
+    Warning: `stat(x)` was deprecated in ggplot2 3.4.0.
+    ℹ Please use `after_stat(x)` instead.
 
-```{r}
+    Picking joint bandwidth of 0.144
+
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-33-1.png)
+
+## Marginal Histograms
+
+``` r
 library(ggExtra)
 ```
 
-```{r, fig.width=8, fig.height=8}
+``` r
 diamonds_scatter <- ggplot(diamonds, aes(carat, price, color = clarity)) +
   geom_point() +
   labs(title = "Price of Diamonds by Cut and Clarity")
@@ -362,18 +542,24 @@ diamonds_scatter <- ggplot(diamonds, aes(carat, price, color = clarity)) +
 ggMarginal(diamonds_scatter, groupColour = TRUE, groupFill = TRUE)
 ```
 
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-35-1.png)
 
 # Add-ons
 
 ## Set Properties to Categorical Variable
 
-> In the `geom`, inside `aes()` set a property (i.e. alpha, shape, size, etc.) = `Categorial Variable`
+> In the `geom`, inside `aes()` set a property (i.e. alpha, shape, size,
+> etc.) = `Categorial Variable`
 
-> Add `scale_property_manual(values = c(value1, value2,etc), name = "Categorial Variable", labels = c("Category 1", "Category 2"))` where "property" is alpha, shape, color, etc.
+> Add
+> `scale_property_manual(values = c(value1, value2,etc), name = "Categorial Variable", labels = c("Category 1", "Category 2"))`
+> where “property” is alpha, shape, color, etc.
 
-A big advantage of this method is you can set the name of the legend and the categories within the `scale_property_manual`, so if the variable name is long/cumbersome you can make the legend easier to read
+A big advantage of this method is you can set the name of the legend and
+the categories within the `scale_property_manual`, so if the variable
+name is long/cumbersome you can make the legend easier to read
 
-```{r, fig.width=4, fig.height=3}
+``` r
 mtcars$cyl = as.factor(mtcars$cyl)
 ggplot(mtcars, aes(wt, mpg, group = cyl)) + 
   geom_point(aes(alpha = cyl), color = "firebrick", size = 4) + 
@@ -381,19 +567,25 @@ ggplot(mtcars, aes(wt, mpg, group = cyl)) +
   scale_alpha_manual(values = c(0.2, 0.5, 1), name = "Cylinders", labels = c("4", "6", "8"))
 ```
 
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-36-1.png)
+
 ## Faceting
 
 ### Subplots based on a categorical variable
 
-```{r}
+``` r
 ggplot(diamonds, aes(carat, price, color = clarity)) +
   geom_point(alpha = 0.5, stroke = NA) +
   geom_smooth() + facet_wrap(~ clarity)
 ```
 
+    `geom_smooth()` using method = 'gam' and formula = 'y ~ s(x, bs = "cs")'
+
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-37-1.png)
+
 ### Subplots in columns and rows (split by 2 variables)
 
-```{r, eval = FALSE}
+``` r
 # Base plot
 insurance <- read_csv("~/Research/R_for_fun/archive/insurance.csv")
 smoker_insurance <- ggplot(data = insurance) + 
@@ -406,21 +598,45 @@ smoker_insurance +
   facet_grid(cols = vars(region), rows = vars(sex))
 ```
 
-### Reordering subplots: 
+### Reordering subplots:
 
 Reordering group factor levels
-```{r}
+
+``` r
 data_new<- rep(c("A","B", "C", "D"), each = 5)
 col2 <- rep(c("12", "10"), each = 10)
 data_new$Values <- col2
+```
+
+    Warning in data_new$Values <- col2: Coercing LHS to a list
+
+``` r
 #View(data_new)
 data_new$group <- factor(data_new$group,levels = c("B", "A", "C", "D"))
 head(data_new)
 ```
 
-### faceting other plot types: 
+    [[1]]
+    [1] "A"
 
-```{r}
+    [[2]]
+    [1] "A"
+
+    [[3]]
+    [1] "A"
+
+    [[4]]
+    [1] "A"
+
+    [[5]]
+    [1] "A"
+
+    [[6]]
+    [1] "B"
+
+### faceting other plot types:
+
+``` r
 ggplot(diamonds) + 
   aes(x = log(price), y = clarity) + 
   geom_density_ridges_gradient(aes(x = log(price), fill = stat(x)), alpha = 0.4) + 
@@ -428,10 +644,27 @@ ggplot(diamonds) +
   facet_wrap(~ color)
 ```
 
+    Picking joint bandwidth of 0.227
+
+    Picking joint bandwidth of 0.179
+
+    Picking joint bandwidth of 0.199
+
+    Picking joint bandwidth of 0.194
+
+    Picking joint bandwidth of 0.204
+
+    Picking joint bandwidth of 0.234
+
+    Picking joint bandwidth of 0.306
+
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-40-1.png)
+
 ### Faceting and zooming on subset of plot
 
 Example of a plot that needs zooming:
-```{r, eval = FALSE}
+
+``` r
 public_data_submit_revisions <- read.delim("~/Research/spike_commentary/public_data_submit_revisions.tsv")
 
 public_data_submit_revisions$filtered.spike_target <- as.numeric(public_data_submit_revisions$filtered.spike_target)
@@ -443,14 +676,14 @@ public_data_submit_revisions <- public_data_submit_revisions %>%
   mutate(meanvar = mean(inputvar))
 ```
 
-```{r, eval = FALSE}
+``` r
 public_data_submit_revisions <- public_data_submit_revisions %>%
   arrange(meanvar) %>%
   group_by(Author = factor(Author, levels = unique(Author))) %>%
   mutate(group = cur_group_id())
 ```
 
-```{r, eval = FALSE}
+``` r
 public_data_submit_revisions %>% 
   drop_na(inputvar) %>% group_by(Author) %>%
   arrange(meanvar) %>%
@@ -462,7 +695,8 @@ public_data_submit_revisions %>%
        y = "input/target", x = "Dataset") + 
   theme(legend.position = "none")
 ```
-```{r, fig.width = 9, fig.height = 4, eval = FALSE}
+
+``` r
 library(ggforce)
 public_data_submit_revisions %>% 
   drop_na(filtered.spike_target) %>% ggplot() + 
@@ -476,10 +710,13 @@ public_data_submit_revisions %>%
 
 Better way: break plot with facets into 1-19, then 20-23, and scale axes
 
-1) can get break in rows, while scaling equally
-  - scales = "free_x" removes the empty entries in each facet
-  - space = "free" scales each facet by the range of x values, keeps them proportional
-```{r, eval = FALSE}
+1)  can get break in rows, while scaling equally
+
+- scales = “free_x” removes the empty entries in each facet
+- space = “free” scales each facet by the range of x values, keeps them
+  proportional
+
+``` r
 library(ggh4x)
 library(RColorBrewer)
 
@@ -496,39 +733,48 @@ public_data_submit_revisions %>%
       values = colorRampPalette(brewer.pal(9, "YlGnBu"))(13)[1:13])
 ```
 
-## Positioning 
+## Positioning
 
 ### Scatterplot positioning
 
 Default
-```{r, fig.width=4, fig.height=3}
+
+``` r
 ggplot(iris) + 
   aes(Sepal.Length, Sepal.Width, color = Species) +
   geom_point()
 ```
 
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-46-1.png)
+
 Jitter
-```{r, fig.width=4, fig.height=3}
+
+``` r
 ggplot(iris) +
   aes(Sepal.Length, Sepal.Width, color = Species) + 
   geom_jitter()
 ```
 
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-47-1.png)
+
 Or
-```{r, fig.width=4, fig.height=3}
+
+``` r
 ggplot(iris) + 
   aes(Sepal.Length, Sepal.Width, color = Species) + 
   geom_point(position= "jitter")
 ```
 
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-48-1.png)
+
 ### Legend positioning
 
-Use `legend.position = c([HORIZONTAL], [VERTICAL])` where 
+Use `legend.position = c([HORIZONTAL], [VERTICAL])` where
 
-1. [HORIZONTAL] = integer from (0, 1), 0 left, 1 right
-2. [VERTICAL] = integer from (0, 1), 0 bottom, 1 top
+1.  \[HORIZONTAL\] = integer from (0, 1), 0 left, 1 right
+2.  \[VERTICAL\] = integer from (0, 1), 0 bottom, 1 top
 
-```{r, fig.width=4.5, fig.height=4}
+``` r
 ggplot(iris) + 
   aes(Sepal.Length, Sepal.Width, color = Species) +
   geom_point() + 
@@ -536,9 +782,16 @@ ggplot(iris) +
   theme(legend.position = c(0.85, 0.83))
 ```
 
-Add border to legend if inside graph to reduce chance of misinterpretation: 
+    Warning: A numeric `legend.position` argument in `theme()` was deprecated in ggplot2
+    3.5.0.
+    ℹ Please use the `legend.position.inside` argument of `theme()` instead.
 
-```{r, fig.width=4.5, fig.height=4}
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-49-1.png)
+
+Add border to legend if inside graph to reduce chance of
+misinterpretation:
+
+``` r
 ggplot(iris) + 
   aes(Sepal.Length, Sepal.Width, color = Species) +
   geom_point() + 
@@ -549,28 +802,31 @@ ggplot(iris) +
                                     colour ="grey20"))
 ```
 
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-50-1.png)
 
 ## Plot on log scale
 
 Plot_type + scale_x_log10() + scale_y_log10()
 
-```{r, fig.width=4, fig.height=3}
+``` r
 ggplot(iris) + 
   aes(Sepal.Length, Sepal.Width, color = Species) + 
   geom_point(position= "jitter") + 
   scale_x_log10() + scale_y_log10()
 ```
 
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-51-1.png)
 
 ## Set x and y axes
 
 ### Strategy 1: Scale_x_continuous
 
-Remove points outside the viewing window (will affect regression lines, etc)
+Remove points outside the viewing window (will affect regression lines,
+etc)
 
 `plot + scale_x_continuous(limits = c(xmin, xmax)) + scale_y_continuous(limits = c(ymin, ymax))`
 
-```{r, fig.width=4, fig.height=3}
+``` r
 ggplot(iris) +
   aes(Sepal.Length, Sepal.Width, group = Species, color = Species) +
   geom_point(position= "jitter") + 
@@ -578,31 +834,44 @@ ggplot(iris) +
   scale_y_continuous(limits = c(1, 5))
 ```
 
+    Warning: Removed 13 rows containing missing values or values outside the scale range
+    (`geom_point()`).
+
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-52-1.png)
+
 ### Strategy 2: coord_cartesian
 
-Set viewing window without removing points that may fall outside (they just won’t be visible)
+Set viewing window without removing points that may fall outside (they
+just won’t be visible)
 
 `plot + coord_cartesian(xlim=c(xmin, xmax), ylim=c(ymin, ymax))`
 
-```{r, fig.width=4, fig.height=3}
+``` r
 ggplot(iris) + 
   aes(Sepal.Length, Sepal.Width, group = Species, color = Species) + 
   geom_point(position= "jitter") + 
   coord_cartesian(xlim = c(4, 7), ylim = c(1, 5))
 ```
 
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-53-1.png)
+
 ## Add regression line
 
 `Plot_object + geom_smooth(method=lm)`
 
-For multiple regression lines by group, set `group = Species` within `aes()`
+For multiple regression lines by group, set `group = Species` within
+`aes()`
 
-```{r, fig.width=4, fig.height=3}
+``` r
 ggplot(iris) + 
   aes(Sepal.Length, Sepal.Width, group = Species, color = Species) + 
   geom_point(position= "jitter") + 
   geom_smooth(method = lm, fill = NA)
 ```
+
+    `geom_smooth()` using formula = 'y ~ x'
+
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-54-1.png)
 
 ## Add x = y line
 
@@ -612,23 +881,30 @@ ggplot(iris) +
 
 `plot_object + scale_y_continuous(breaks=seq(ymin, ymax, interval))`
 
-
 # Coloring
 
 ## `Viridis` Colorblind-friendly library
 
-Add with `library(viridis)` 
-```{r}
+Add with `library(viridis)`
+
+``` r
 library(viridis)
 ```
 
+    Loading required package: viridisLite
+
+
+    Attaching package: 'viridis'
+
+    The following object is masked from 'package:scales':
+
+        viridis_pal
+
 ### Continuous Color Schemes
-```{r, echo = FALSE, eval = FALSE}
-knitr::include_graphics("C:\\Users\\lhodg\\Documents\\Research\\R_for_fun\\data_vis\\viridis_continuous.png")
-```
 
 Plotting for continuous variables
-```{r, eval = FALSE}
+
+``` r
 smoker_insurance + 
   geom_jitter(aes(color = bmi)) + 
   facet_grid(cols = vars(region), rows = vars(sex)) + 
@@ -636,12 +912,14 @@ smoker_insurance +
 ```
 
 ### Discrete Color Schemes
-```{r, eval = FALSE, eval = FALSE}
+
+``` r
 knitr::include_graphics("C:\\Users\\lhodg\\Documents\\Research\\R_for_fun\\data_vis\\viridis_discrete.png")
 ```
 
 Plotting for Discrete color schemes, make sure to set `discrete = TRUE`
-```{r, fig.width=4, fig.height=3, eval = FALSE}
+
+``` r
 ggplot(data = acadia) + 
   aes(x = Category, y = Abundance, color = Abundance) + 
   geom_count() + 
@@ -651,24 +929,27 @@ ggplot(data = acadia) +
 
 ## R Color Brewer
 
-```{r, echo = FALSE,  fig.width=6.5, fig.height=8}
-library(RColorBrewer)
-display.brewer.all()
-```
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-60-1.png)
 
-Get hex codes from the color schemes: 
+Get hex codes from the color schemes:
 
-```{r}
-
+``` r
 brewer.pal(n=5,"Set1")
 ```
 
-Extend colors (if you need more colors, or want to exclude upper/lower colors) 
+    [1] "#E41A1C" "#377EB8" "#4DAF4A" "#984EA3" "#FF7F00"
 
-```{r}
+Extend colors (if you need more colors, or want to exclude upper/lower
+colors)
+
+``` r
 colorRampPalette(brewer.pal(9, "YlGnBu"))(12)[4:11]
 ```
-```{r, fig.width=6.5, fig.height=5, eval = FALSE}
+
+    [1] "#B9E3B5" "#85CFBA" "#57BEC0" "#33A8C2" "#1D8CBD" "#2167AC" "#23479D"
+    [8] "#1D2D83"
+
+``` r
 ggplot(data = acadia) + 
   aes(x = Category, y = Abundance, color = Abundance) + 
   geom_count() + 
@@ -680,10 +961,16 @@ ggplot(data = acadia) +
 
 ## non Rcolorbrewer palettes
 
-```{r, fig.width = 6, fig.height = 8}
+``` r
 library(grDevices) # library for color palettes
 library(unikn) # library needed for plot below
+```
 
+    Welcome to unikn (v1.0.0)!
+
+    simcol() searches for similar colors.
+
+``` r
 n <- 10
 
 h1 <- hcl.colors(n, palette = "Dynamic")
@@ -707,11 +994,45 @@ seecol(list(h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, h11, h12, h13, h15),
        pal_names = c("Dynamic", "Earth", "Terrain", "Berlin", "Oslo", "Lajolla", "Cork", "Vik", "Fall", "Sunset", "Purple-Orange", "Dark-Mint", "Peach", "Roma"))
 ```
 
-See all hcl palettes: 
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-64-1.png)
 
-```{r, fig.width = 8, fig.height = 6}
+See all hcl palettes:
+
+``` r
 hcl.pals()
+```
 
+      [1] "Pastel 1"      "Dark 2"        "Dark 3"        "Set 2"        
+      [5] "Set 3"         "Warm"          "Cold"          "Harmonic"     
+      [9] "Dynamic"       "Grays"         "Light Grays"   "Blues 2"      
+     [13] "Blues 3"       "Purples 2"     "Purples 3"     "Reds 2"       
+     [17] "Reds 3"        "Greens 2"      "Greens 3"      "Oslo"         
+     [21] "Purple-Blue"   "Red-Purple"    "Red-Blue"      "Purple-Orange"
+     [25] "Purple-Yellow" "Blue-Yellow"   "Green-Yellow"  "Red-Yellow"   
+     [29] "Heat"          "Heat 2"        "Terrain"       "Terrain 2"    
+     [33] "Viridis"       "Plasma"        "Inferno"       "Rocket"       
+     [37] "Mako"          "Dark Mint"     "Mint"          "BluGrn"       
+     [41] "Teal"          "TealGrn"       "Emrld"         "BluYl"        
+     [45] "ag_GrnYl"      "Peach"         "PinkYl"        "Burg"         
+     [49] "BurgYl"        "RedOr"         "OrYel"         "Purp"         
+     [53] "PurpOr"        "Sunset"        "Magenta"       "SunsetDark"   
+     [57] "ag_Sunset"     "BrwnYl"        "YlOrRd"        "YlOrBr"       
+     [61] "OrRd"          "Oranges"       "YlGn"          "YlGnBu"       
+     [65] "Reds"          "RdPu"          "PuRd"          "Purples"      
+     [69] "PuBuGn"        "PuBu"          "Greens"        "BuGn"         
+     [73] "GnBu"          "BuPu"          "Blues"         "Lajolla"      
+     [77] "Turku"         "Hawaii"        "Batlow"        "Blue-Red"     
+     [81] "Blue-Red 2"    "Blue-Red 3"    "Red-Green"     "Purple-Green" 
+     [85] "Purple-Brown"  "Green-Brown"   "Blue-Yellow 2" "Blue-Yellow 3"
+     [89] "Green-Orange"  "Cyan-Magenta"  "Tropic"        "Broc"         
+     [93] "Cork"          "Vik"           "Berlin"        "Lisbon"       
+     [97] "Tofino"        "ArmyRose"      "Earth"         "Fall"         
+    [101] "Geyser"        "TealRose"      "Temps"         "PuOr"         
+    [105] "RdBu"          "RdGy"          "PiYG"          "PRGn"         
+    [109] "BrBG"          "RdYlBu"        "RdYlGn"        "Spectral"     
+    [113] "Zissou 1"      "Cividis"       "Roma"         
+
+``` r
 hcl.swatch <- function(type = NULL, n = 5, nrow = 11,
   border = if (n < 15) "black" else NA) {
     palette <- hcl.pals(type)
@@ -740,19 +1061,32 @@ hcl.swatch <- function(type = NULL, n = 5, nrow = 11,
 }
 hcl.swatch("qualitative")
 ```
-```{r, fig.width = 5, fig.height = 6}
+
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-65-1.png)
+
+``` r
 hcl.swatch("sequential")
 ```
-```{r, fig.width = 5, fig.height = 6}
+
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-66-1.png)
+
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-66-2.png)
+
+``` r
 hcl.swatch("diverging")
 ```
 
-```{r, fig.width = 5, fig.height = 6}
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-67-1.png)
+
+``` r
 hcl.swatch("divergingx")
 ```
 
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-68-1.png)
+
 ## Manual Color Scheme and Labeling
-```{r, fig.width=4, fig.height=3}
+
+``` r
 # Define your palette of choice
 iris_palette <- c(setosa = "slateblue", versicolor = "seagreen", virginica = "orchid")
 
@@ -763,18 +1097,20 @@ ggplot(iris, aes(Petal.Width, fill = Species)) +
   scale_fill_manual("Species", values = iris_palette)
 ```
 
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-69-1.png)
+
 # Labels
 
-All Font Sizes
-Any ## indicates numerical input, XX indicates text input
+All Font Sizes Any \## indicates numerical input, XX indicates text
+input
 
 > `Plot_object + theme(axis.text.x = element_text(size=##), axis.text.y = element_text(size=##), axis.title = element_text(size=##), etc.)`
 
 Options for text size changing:
 
-1. axis.text.x
-2. axis.text.y
-3. strip.text.x : text in facet labels
+1.  axis.text.x
+2.  axis.text.y
+3.  strip.text.x : text in facet labels
 
 ## custom legend labels
 
@@ -784,7 +1120,7 @@ For line/dot plots: `scale_color_discrete` or `scale_color_manual`
 
 Example
 
-```{r, fig.width=4, fig.height=3}
+``` r
 ggplot(iris) +
   aes(Sepal.Length, Sepal.Width, group = Species, color = Species) +
   geom_point() + 
@@ -795,6 +1131,7 @@ ggplot(iris) +
   )
 ```
 
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-70-1.png)
 
 For bar/violin/similar: `scale_fill_discrete`
 
@@ -808,7 +1145,7 @@ Standard date format: `yyyy-mm-dd`
 
 Make a time series dataset:
 
-```{r}
+``` r
 set.seed(1234)
 last_month <- Sys.Date() - 0:29
 df <- data.frame(
@@ -817,58 +1154,72 @@ df <- data.frame(
 )
 ```
 
-Plot: 
-```{r, fig.width = 4, fig.height = 3}
+Plot:
+
+``` r
 ggplot(data=df, aes(x = date, y = price)) +
   geom_line()
 ```
 
-Format dates: 
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-72-1.png)
 
-- Weekday name: use %a and %A for abbreviated and full weekday name, respectively
-- Month name: use %b and %B for abbreviated and full month name, respectively
+Format dates:
+
+- Weekday name: use %a and %A for abbreviated and full weekday name,
+  respectively
+- Month name: use %b and %B for abbreviated and full month name,
+  respectively
 - %d: day of the month as decimal number
 - %U: week of the year as decimal number (00-53)
 - %Y: Year with century
 
-```{r, fig.width = 4, fig.height = 3}
+``` r
 ggplot(data=df, aes(x = date, y = price)) +
   geom_line() + 
   scale_x_date(date_labels = "%b/%d")
 ```
 
-```{r, fig.width = 4, fig.height = 3}
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-73-1.png)
+
+``` r
 ggplot(data=df, aes(x = date, y = price)) +
   geom_line() + scale_x_date(date_labels = "%U")
 ```
 
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-74-1.png)
+
 ## format axes numbers
 
-### sci notation -> full numbers
+### sci notation -\> full numbers
 
-```{r}
+``` r
 options(scipen = 999)
 library(gapminder)
 ggplot(data = gapminder %>% filter(year == 2007) %>% arrange(-pop) %>% top_n(10, wt = pop)) + 
   aes(x = country, y = pop) + 
   geom_bar(stat = "identity")
 ```
-### full numbers -> Add commas
+
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-75-1.png)
+
+### full numbers -\> Add commas
 
 `scale_y_continuous(labels = scales::comma)`
 
-```{r}
+``` r
 ggplot(data = gapminder %>% filter(year == 2007) %>% arrange(-pop) %>% top_n(10, wt = pop)) + 
   aes(x = country, y = pop) + 
   geom_bar(stat = "identity") +
   scale_y_continuous(labels = scales::comma)
 ```
 
-### Full numbers -> Millions or Billions
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-76-1.png)
+
+### Full numbers -\> Millions or Billions
 
 `labels = scales::label_number_si()`
 
-```{r, eval = FALSE}
+``` r
 ggplot(data = gapminder %>% filter(year == 2007) %>% arrange(-pop) %>% top_n(10, wt = pop)) + 
   aes(x = country, y = pop) + 
   geom_bar(stat = "identity") +
@@ -879,7 +1230,7 @@ ggplot(data = gapminder %>% filter(year == 2007) %>% arrange(-pop) %>% top_n(10,
 
 `title = "text here \ntext here"`
 
-```{r, fig.width=4, fig.height=3, eval = FALSE}
+``` r
 acadia <- filter(species_clean, Park_Name == "Acadia")
 ggplot(data = acadia) + 
   aes(x = Category, y = Abundance, color = Abundance) + 
@@ -887,18 +1238,24 @@ ggplot(data = acadia) +
   labs(title = "Abundance of Biodiversity in \nAcadia National Park")
 ```
 
-
 # Combining plots
 
 ## GridExtra - Gridarrange
 
-```{r}
+``` r
 library(gridExtra)
 ```
 
+
+    Attaching package: 'gridExtra'
+
+    The following object is masked from 'package:dplyr':
+
+        combine
+
 Some dummy plots
 
-```{r}
+``` r
 p1 <- ggplot(data=iris) + 
   aes(x=Sepal.Width, fill=Species) + 
   geom_density(stat="density", alpha=I(0.2)) + 
@@ -923,12 +1280,11 @@ p4 <- ggplot(data = diamonds) +
 p5 <- ggplot(iris) +  
   aes(Sepal.Length, Sepal.Width, color = Species) + 
   geom_jitter()
-  
 ```
 
 Combine with `grid.arrange`
 
-```{r, fig.height = 7, fig.width = 8}
+``` r
 # make a matrix of the layout - NA's are empty placeholders, each vector makes a row
 lay <- rbind(c(1, NA, NA),
              c(2, 3, NA), 
@@ -941,3 +1297,4 @@ grid.arrange(p1, p2, p3, p4, p5,
   widths = c(5,6,5))
 ```
 
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-81-1.png)
