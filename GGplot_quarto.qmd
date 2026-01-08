@@ -1,7 +1,6 @@
 ---
 title: "ggplot_quarto"
 format: gfm
-embed-resources: true
 toc: true
 theme: cosmo
 code-overflow: wrap
@@ -95,6 +94,7 @@ density_hist +
   ylab("Density") + 
   ggtitle("Histogram & Density Curve of Sepal Width")
 ```
+
 ## Pie
 
 ```{r}

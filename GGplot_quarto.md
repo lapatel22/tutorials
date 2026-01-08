@@ -968,7 +968,7 @@ library(unikn) # library needed for plot below
 
     Welcome to unikn (v1.0.0)!
 
-    simcol() searches for similar colors.
+    unikn.guide() opens user guides.
 
 ``` r
 n <- 10
