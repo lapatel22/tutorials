@@ -1,7 +1,70 @@
-Dataframe Manipulation in R
-================
+# Dataframe Manipulation in R
 
-true
+
+- [Quarto formatting:](#quarto-formatting)
+- [Intro Steps](#intro-steps)
+  - [Load Libraries and Presets](#load-libraries-and-presets)
+    - [Theme for ggplot](#theme-for-ggplot)
+  - [Some general notes for this
+    document:](#some-general-notes-for-this-document)
+- [Data Import](#data-import)
+  - [From excel (try to avoid)](#from-excel-try-to-avoid)
+  - [Import from TSV, CSV, etc](#import-from-tsv-csv-etc)
+- [Getting Basic Information](#getting-basic-information)
+  - [Basic operations:](#basic-operations)
+  - [Cleanup column names in Kable with
+    `gsub()`](#cleanup-column-names-in-kable-with-gsub)
+  - [Variable classes](#variable-classes)
+- [Searching](#searching)
+  - [`grep()` vs `grepl()`](#grep-vs-grepl)
+  - [Search and return row of
+    dataframe](#search-and-return-row-of-dataframe)
+  - [Multiple matches with logical
+    operators](#multiple-matches-with-logical-operators)
+- [Split verbose column into multiple with
+  `separate_wider_regex()`](#split-verbose-column-into-multiple-with-separate_wider_regex)
+  - [Example with my sequencing data](#example-with-my-sequencing-data)
+- [Combine dataframes](#combine-dataframes)
+  - [Tidyverse `cbind()`](#tidyverse-cbind)
+  - [Tidyverse `rbind()`](#tidyverse-rbind)
+  - [Base R `merge()`](#base-r-merge)
+  - [`bind_rows()`](#bind_rows)
+- [Changing Names with `rename_with()` and
+  `gsub()`](#changing-names-with-rename_with-and-gsub)
+  - [Change column names](#change-column-names)
+  - [Remove All Numbers from Column
+    Names](#remove-all-numbers-from-column-names)
+    - [Rename Column by Order](#rename-column-by-order)
+  - [Change data in column](#change-data-in-column)
+- [random downsampling of data](#random-downsampling-of-data)
+- [Cleanup data - set NAs to 0](#cleanup-data---set-nas-to-0)
+- [Tidyverse basics](#tidyverse-basics)
+  - [`mutate()` can create new column based on
+    others](#mutate-can-create-new-column-based-on-others)
+  - [select columns](#select-columns)
+  - [paring mutate and select](#paring-mutate-and-select)
+  - [Pair Data](#pair-data)
+  - [Long Format (TidyR format) with
+    `pivot_longer()`](#long-format-tidyr-format-with-pivot_longer)
+  - [Reorder column contents](#reorder-column-contents)
+  - [Apply function to groups within
+    dataframe](#apply-function-to-groups-within-dataframe)
+    - [Function to calculate variation in inputs within each
+      paper](#function-to-calculate-variation-in-inputs-within-each-paper)
+- [Create data](#create-data)
+  - [Empty vector](#empty-vector)
+  - [Column filled with basic math](#column-filled-with-basic-math)
+  - [rowMeans()](#rowmeans)
+  - [Column filled using patterns](#column-filled-using-patterns)
+  - [Add column to dataframe](#add-column-to-dataframe)
+  - [Add column from dataframe (containing \> 1 column) to different
+    dataframe](#add-column-from-dataframe-containing--1-column-to-different-dataframe)
+  - [Make Dataframe from vectors](#make-dataframe-from-vectors)
+  - [Add column to number groups](#add-column-to-number-groups)
+- [Boolean Logic](#boolean-logic)
+- [Special cases](#special-cases)
+  - [Convert Time Series to Dataframe with `as.matrix()` and
+    `data.frame()`](#convert-time-series-to-dataframe-with-asmatrix-and-dataframe)
 
 # Quarto formatting:
 
@@ -33,23 +96,23 @@ library(readxl)    # used to load excel files in R
 library(tidyverse) # see tidyverse tutorial, powerful set of tools for data maniputation
 ```
 
-    ## ── Attaching core tidyverse packages ──────────────────────── tidyverse 2.0.0 ──
-    ## ✔ dplyr     1.1.4     ✔ readr     2.1.5
-    ## ✔ forcats   1.0.0     ✔ stringr   1.5.1
-    ## ✔ ggplot2   3.5.1     ✔ tibble    3.2.1
-    ## ✔ lubridate 1.9.4     ✔ tidyr     1.3.1
-    ## ✔ purrr     1.0.2     
-    ## ── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
-    ## ✖ dplyr::filter() masks stats::filter()
-    ## ✖ dplyr::lag()    masks stats::lag()
-    ## ℹ Use the conflicted package (<http://conflicted.r-lib.org/>) to force all conflicts to become errors
+    ── Attaching core tidyverse packages ──────────────────────── tidyverse 2.0.0 ──
+    ✔ dplyr     1.1.4     ✔ readr     2.1.5
+    ✔ forcats   1.0.0     ✔ stringr   1.5.1
+    ✔ ggplot2   3.5.1     ✔ tibble    3.2.1
+    ✔ lubridate 1.9.4     ✔ tidyr     1.3.1
+    ✔ purrr     1.0.2     
+    ── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
+    ✖ dplyr::filter() masks stats::filter()
+    ✖ dplyr::lag()    masks stats::lag()
+    ℹ Use the conflicted package (<http://conflicted.r-lib.org/>) to force all conflicts to become errors
 
 ``` r
 library(gapminder) # public dataset used for examples
 library(viridis)   # library of colorblind-friendly palettes
 ```
 
-    ## Loading required package: viridisLite
+    Loading required package: viridisLite
 
 ### Theme for ggplot
 
@@ -111,8 +174,8 @@ seqstats <- read_excel("Sequencing_Stats_260107.xlsx",
     sheet = "all_dualspike_metadata")
 ```
 
-    ## New names:
-    ## • `` -> `...7`
+    New names:
+    • `` -> `...7`
 
 ``` r
 knitr::kable(head(seqstats))
@@ -200,33 +263,33 @@ knitr::kable(head(seqstats), col.names = gsub("[_]", " ", names(seqstats)))
 str(seqstats)
 ```
 
-    ## tibble [279 × 26] (S3: tbl_df/tbl/data.frame)
-    ##  $ experiment ID                  : chr [1:279] "LP78" "LP78" "LP78" "LP78" ...
-    ##  $ library ID                     : chr [1:279] "HelaS3_100sync_0inter_1_H3K9ac_1" "HelaS3_100sync_0inter_1_H3K9ac_2" "HelaS3_100sync_0inter_1_H3K9ac_3" "HelaS3_75sync_25inter_1_H3K9ac_1" ...
-    ##  $ cell                           : chr [1:279] "HeLaS3" "HeLaS3" "HeLaS3" "HeLaS3" ...
-    ##  $ IP                             : chr [1:279] "H3K9ac" "H3K9ac" "H3K9ac" "H3K9ac" ...
-    ##  $ biorep                         : num [1:279] 1 1 1 1 1 1 1 1 1 1 ...
-    ##  $ techrep                        : num [1:279] 1 2 3 1 2 3 1 2 3 1 ...
-    ##  $ ...7                           : num [1:279] NA NA NA NA NA NA NA NA NA NA ...
-    ##  $ bwa hg38 -q 50                 : num [1:279] 8446795 8000672 7144407 9000686 10985910 ...
-    ##  $ bwa dm6 -q 50                  : num [1:279] 787637 719513 812865 478856 499861 ...
-    ##  $ bwa sac3 -q 50                 : num [1:279] 3384998 3165051 3581432 2350718 2263534 ...
-    ##  $ dm6/sac3                       : num [1:279] 0.233 0.227 0.227 0.204 0.221 ...
-    ##  $ dm6/hg38                       : num [1:279] 0.0932 0.0899 0.1138 0.0532 0.0455 ...
-    ##  $ sac3/hg38                      : num [1:279] 0.401 0.396 0.501 0.261 0.206 ...
-    ##  $ dm6/hg38 IP/input              : num [1:279] 8.25 7.96 10.07 4.96 4.24 ...
-    ##  $ sac3/hg38 IP/input             : num [1:279] 50.6 49.9 63.3 34 26.8 ...
-    ##  $ dm6/hg38 IP/input control norm : num [1:279] 0.942 0.909 1.149 0.567 0.485 ...
-    ##  $ sac3/hg38 IP/input control norm: num [1:279] 0.926 0.915 1.159 0.623 0.492 ...
-    ##  $ dm6 IP signal                  : num [1:279] 22497 22511 22719 22547 22465 ...
-    ##  $ sac3 IP signal                 : num [1:279] 165939 166042 166251 165788 165798 ...
-    ##  $ dm6 eff IP/input               : num [1:279] 6721 6735 6943 6860 6778 ...
-    ##  $ sac3 eff IP/input              : num [1:279] 0.995 0.996 0.997 0.992 0.992 ...
-    ##  $ dm6 eff control norm           : num [1:279] 0.988 0.991 1.021 1.009 0.997 ...
-    ##  $ sac3 eff control norm          : chr [1:279] "0.9991668547" "0.9997858429" "1.001047302" "0.9955388152" ...
-    ##  $ dm6 normfactor snr adj         : num [1:279] 0.931 0.9 1.174 0.572 0.483 ...
-    ##  $ sac3 normfactor snr adj        : num [1:279] 0.926 0.914 1.16 0.621 0.49 ...
-    ##  $ dual normfactor snr adj        : num [1:279] 0.928 0.907 1.167 0.596 0.486 ...
+    tibble [279 × 26] (S3: tbl_df/tbl/data.frame)
+     $ experiment ID                  : chr [1:279] "LP78" "LP78" "LP78" "LP78" ...
+     $ library ID                     : chr [1:279] "HelaS3_100sync_0inter_1_H3K9ac_1" "HelaS3_100sync_0inter_1_H3K9ac_2" "HelaS3_100sync_0inter_1_H3K9ac_3" "HelaS3_75sync_25inter_1_H3K9ac_1" ...
+     $ cell                           : chr [1:279] "HeLaS3" "HeLaS3" "HeLaS3" "HeLaS3" ...
+     $ IP                             : chr [1:279] "H3K9ac" "H3K9ac" "H3K9ac" "H3K9ac" ...
+     $ biorep                         : num [1:279] 1 1 1 1 1 1 1 1 1 1 ...
+     $ techrep                        : num [1:279] 1 2 3 1 2 3 1 2 3 1 ...
+     $ ...7                           : num [1:279] NA NA NA NA NA NA NA NA NA NA ...
+     $ bwa hg38 -q 50                 : num [1:279] 8446795 8000672 7144407 9000686 10985910 ...
+     $ bwa dm6 -q 50                  : num [1:279] 787637 719513 812865 478856 499861 ...
+     $ bwa sac3 -q 50                 : num [1:279] 3384998 3165051 3581432 2350718 2263534 ...
+     $ dm6/sac3                       : num [1:279] 0.233 0.227 0.227 0.204 0.221 ...
+     $ dm6/hg38                       : num [1:279] 0.0932 0.0899 0.1138 0.0532 0.0455 ...
+     $ sac3/hg38                      : num [1:279] 0.401 0.396 0.501 0.261 0.206 ...
+     $ dm6/hg38 IP/input              : num [1:279] 8.25 7.96 10.07 4.96 4.24 ...
+     $ sac3/hg38 IP/input             : num [1:279] 50.6 49.9 63.3 34 26.8 ...
+     $ dm6/hg38 IP/input control norm : num [1:279] 0.942 0.909 1.149 0.567 0.485 ...
+     $ sac3/hg38 IP/input control norm: num [1:279] 0.926 0.915 1.159 0.623 0.492 ...
+     $ dm6 IP signal                  : num [1:279] 22497 22511 22719 22547 22465 ...
+     $ sac3 IP signal                 : num [1:279] 165939 166042 166251 165788 165798 ...
+     $ dm6 eff IP/input               : num [1:279] 6721 6735 6943 6860 6778 ...
+     $ sac3 eff IP/input              : num [1:279] 0.995 0.996 0.997 0.992 0.992 ...
+     $ dm6 eff control norm           : num [1:279] 0.988 0.991 1.021 1.009 0.997 ...
+     $ sac3 eff control norm          : chr [1:279] "0.9991668547" "0.9997858429" "1.001047302" "0.9955388152" ...
+     $ dm6 normfactor snr adj         : num [1:279] 0.931 0.9 1.174 0.572 0.483 ...
+     $ sac3 normfactor snr adj        : num [1:279] 0.926 0.914 1.16 0.621 0.49 ...
+     $ dual normfactor snr adj        : num [1:279] 0.928 0.907 1.167 0.596 0.486 ...
 
 - fct = categorical variable (factor)
 - dbl = dibble
@@ -256,9 +319,9 @@ In the below code we are searching for:
 grep("_1hr", seqstats$ID)
 ```
 
-    ## Warning: Unknown or uninitialised column: `ID`.
+    Warning: Unknown or uninitialised column: `ID`.
 
-    ## integer(0)
+    integer(0)
 
 **`grepl()`** is very similar, but instead of returining indices of the
 matches location, it returns a logical vector, with TRUE representing a
@@ -270,9 +333,9 @@ The same example with grepl:
 grepl("_1hr", seqstats$ID)
 ```
 
-    ## Warning: Unknown or uninitialised column: `ID`.
+    Warning: Unknown or uninitialised column: `ID`.
 
-    ## logical(0)
+    logical(0)
 
 ## Search and return row of dataframe
 
@@ -284,7 +347,7 @@ Use indexes to return row with match: works with `grep` and `grepl`
 seqstats[grep("0hr", seqstats$ID), ] %>% knitr::kable()
 ```
 
-    ## Warning: Unknown or uninitialised column: `ID`.
+    Warning: Unknown or uninitialised column: `ID`.
 
 | experiment ID | library ID | cell | IP | biorep | techrep | …7 | bwa hg38 -q 50 | bwa dm6 -q 50 | bwa sac3 -q 50 | dm6/sac3 | dm6/hg38 | sac3/hg38 | dm6/hg38 IP/input | sac3/hg38 IP/input | dm6/hg38 IP/input control norm | sac3/hg38 IP/input control norm | dm6 IP signal | sac3 IP signal | dm6 eff IP/input | sac3 eff IP/input | dm6 eff control norm | sac3 eff control norm | dm6 normfactor snr adj | sac3 normfactor snr adj | dual normfactor snr adj |
 |:---|:---|:---|:---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|:---|---:|---:|---:|
@@ -295,7 +358,7 @@ seqstats[grep("0hr", seqstats$ID), ] %>% knitr::kable()
 seqstats[grep("69a|69e", seqstats$ID), ] %>% knitr::kable()
 ```
 
-    ## Warning: Unknown or uninitialised column: `ID`.
+    Warning: Unknown or uninitialised column: `ID`.
 
 | experiment ID | library ID | cell | IP | biorep | techrep | …7 | bwa hg38 -q 50 | bwa dm6 -q 50 | bwa sac3 -q 50 | dm6/sac3 | dm6/hg38 | sac3/hg38 | dm6/hg38 IP/input | sac3/hg38 IP/input | dm6/hg38 IP/input control norm | sac3/hg38 IP/input control norm | dm6 IP signal | sac3 IP signal | dm6 eff IP/input | sac3 eff IP/input | dm6 eff control norm | sac3 eff control norm | dm6 normfactor snr adj | sac3 normfactor snr adj | dual normfactor snr adj |
 |:---|:---|:---|:---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|:---|---:|---:|---:|
@@ -303,7 +366,7 @@ seqstats[grep("69a|69e", seqstats$ID), ] %>% knitr::kable()
 # Split verbose column into multiple with `separate_wider_regex()`
 
 Using `separate_wider_regex()` from tidyr package, info here:
-<https://tidyr.tidyverse.org/reference/separate_wider_delim.html>
+https://tidyr.tidyverse.org/reference/separate_wider_delim.html
 
 Syntax:
 
@@ -452,22 +515,22 @@ names(seqstats_new) <- gsub("[[:digit:]]", "", names(seqstats))
 seqstats_new %>% head()
 ```
 
-    ## # A tibble: 6 × 26
-    ##   `experiment ID` `library ID`     cell  IP    biorep techrep   ... `bwa hg -q `
-    ##   <chr>           <chr>            <chr> <chr>  <dbl>   <dbl> <dbl>        <dbl>
-    ## 1 LP78            HelaS3_100sync_… HeLa… H3K9…      1       1    NA      8446795
-    ## 2 LP78            HelaS3_100sync_… HeLa… H3K9…      1       2    NA      8000672
-    ## 3 LP78            HelaS3_100sync_… HeLa… H3K9…      1       3    NA      7144407
-    ## 4 LP78            HelaS3_75sync_2… HeLa… H3K9…      1       1    NA      9000686
-    ## 5 LP78            HelaS3_75sync_2… HeLa… H3K9…      1       2    NA     10985910
-    ## 6 LP78            HelaS3_75sync_2… HeLa… H3K9…      1       3    NA      8336422
-    ## # ℹ 18 more variables: `bwa dm -q ` <dbl>, `bwa sac -q ` <dbl>, `dm/sac` <dbl>,
-    ## #   `dm/hg` <dbl>, `sac/hg` <dbl>, `dm/hg IP/input` <dbl>,
-    ## #   `sac/hg IP/input` <dbl>, `dm/hg IP/input control norm` <dbl>,
-    ## #   `sac/hg IP/input control norm` <dbl>, `dm IP signal` <dbl>,
-    ## #   `sac IP signal` <dbl>, `dm eff IP/input` <dbl>, `sac eff IP/input` <dbl>,
-    ## #   `dm eff control norm` <dbl>, `sac eff control norm` <chr>,
-    ## #   `dm normfactor snr adj` <dbl>, `sac normfactor snr adj` <dbl>, …
+    # A tibble: 6 × 26
+      `experiment ID` `library ID`     cell  IP    biorep techrep   ... `bwa hg -q `
+      <chr>           <chr>            <chr> <chr>  <dbl>   <dbl> <dbl>        <dbl>
+    1 LP78            HelaS3_100sync_… HeLa… H3K9…      1       1    NA      8446795
+    2 LP78            HelaS3_100sync_… HeLa… H3K9…      1       2    NA      8000672
+    3 LP78            HelaS3_100sync_… HeLa… H3K9…      1       3    NA      7144407
+    4 LP78            HelaS3_75sync_2… HeLa… H3K9…      1       1    NA      9000686
+    5 LP78            HelaS3_75sync_2… HeLa… H3K9…      1       2    NA     10985910
+    6 LP78            HelaS3_75sync_2… HeLa… H3K9…      1       3    NA      8336422
+    # ℹ 18 more variables: `bwa dm -q ` <dbl>, `bwa sac -q ` <dbl>, `dm/sac` <dbl>,
+    #   `dm/hg` <dbl>, `sac/hg` <dbl>, `dm/hg IP/input` <dbl>,
+    #   `sac/hg IP/input` <dbl>, `dm/hg IP/input control norm` <dbl>,
+    #   `sac/hg IP/input control norm` <dbl>, `dm IP signal` <dbl>,
+    #   `sac IP signal` <dbl>, `dm eff IP/input` <dbl>, `sac eff IP/input` <dbl>,
+    #   `dm eff control norm` <dbl>, `sac eff control norm` <chr>,
+    #   `dm normfactor snr adj` <dbl>, `sac normfactor snr adj` <dbl>, …
 
 ### Rename Column by Order
 
@@ -542,22 +605,22 @@ seqstats %>%
   head()
 ```
 
-    ## # A tibble: 6 × 27
-    ##   `experiment ID` `library ID` cell  IP    biorep techrep  ...7 `bwa hg38 -q 50`
-    ##   <chr>           <chr>        <chr> <chr>  <dbl>   <dbl> <dbl>            <dbl>
-    ## 1 LP78            HelaS3_100s… HeLa… H3K9…      1       1    NA          8446795
-    ## 2 LP78            HelaS3_100s… HeLa… H3K9…      1       2    NA          8000672
-    ## 3 LP78            HelaS3_100s… HeLa… H3K9…      1       3    NA          7144407
-    ## 4 LP78            HelaS3_75sy… HeLa… H3K9…      1       1    NA          9000686
-    ## 5 LP78            HelaS3_75sy… HeLa… H3K9…      1       2    NA         10985910
-    ## 6 LP78            HelaS3_75sy… HeLa… H3K9…      1       3    NA          8336422
-    ## # ℹ 19 more variables: `bwa dm6 -q 50` <dbl>, `bwa sac3 -q 50` <dbl>,
-    ## #   `dm6/sac3` <dbl>, `dm6/hg38` <dbl>, `sac3/hg38` <dbl>,
-    ## #   `dm6/hg38 IP/input` <dbl>, `sac3/hg38 IP/input` <dbl>,
-    ## #   `dm6/hg38 IP/input control norm` <dbl>,
-    ## #   `sac3/hg38 IP/input control norm` <dbl>, `dm6 IP signal` <dbl>,
-    ## #   `sac3 IP signal` <dbl>, `dm6 eff IP/input` <dbl>,
-    ## #   `sac3 eff IP/input` <dbl>, `dm6 eff control norm` <dbl>, …
+    # A tibble: 6 × 27
+      `experiment ID` `library ID` cell  IP    biorep techrep  ...7 `bwa hg38 -q 50`
+      <chr>           <chr>        <chr> <chr>  <dbl>   <dbl> <dbl>            <dbl>
+    1 LP78            HelaS3_100s… HeLa… H3K9…      1       1    NA          8446795
+    2 LP78            HelaS3_100s… HeLa… H3K9…      1       2    NA          8000672
+    3 LP78            HelaS3_100s… HeLa… H3K9…      1       3    NA          7144407
+    4 LP78            HelaS3_75sy… HeLa… H3K9…      1       1    NA          9000686
+    5 LP78            HelaS3_75sy… HeLa… H3K9…      1       2    NA         10985910
+    6 LP78            HelaS3_75sy… HeLa… H3K9…      1       3    NA          8336422
+    # ℹ 19 more variables: `bwa dm6 -q 50` <dbl>, `bwa sac3 -q 50` <dbl>,
+    #   `dm6/sac3` <dbl>, `dm6/hg38` <dbl>, `sac3/hg38` <dbl>,
+    #   `dm6/hg38 IP/input` <dbl>, `sac3/hg38 IP/input` <dbl>,
+    #   `dm6/hg38 IP/input control norm` <dbl>,
+    #   `sac3/hg38 IP/input control norm` <dbl>, `dm6 IP signal` <dbl>,
+    #   `sac3 IP signal` <dbl>, `dm6 eff IP/input` <dbl>,
+    #   `sac3 eff IP/input` <dbl>, `dm6 eff control norm` <dbl>, …
 
 ## select columns
 
@@ -568,15 +631,15 @@ seqstats %>%
    select(., IP) %>% head()
 ```
 
-    ## # A tibble: 6 × 1
-    ##   IP    
-    ##   <chr> 
-    ## 1 H3K9ac
-    ## 2 H3K9ac
-    ## 3 H3K9ac
-    ## 4 H3K9ac
-    ## 5 H3K9ac
-    ## 6 H3K9ac
+    # A tibble: 6 × 1
+      IP    
+      <chr> 
+    1 H3K9ac
+    2 H3K9ac
+    3 H3K9ac
+    4 H3K9ac
+    5 H3K9ac
+    6 H3K9ac
 
 By partial match with `contains`
 
@@ -585,15 +648,15 @@ seqstats %>%
    select(., contains("snr")) %>% head()
 ```
 
-    ## # A tibble: 6 × 3
-    ##   `dm6 normfactor snr adj` `sac3 normfactor snr adj` `dual normfactor snr adj`
-    ##                      <dbl>                     <dbl>                     <dbl>
-    ## 1                    0.931                     0.926                     0.928
-    ## 2                    0.900                     0.914                     0.907
-    ## 3                    1.17                      1.16                      1.17 
-    ## 4                    0.572                     0.621                     0.596
-    ## 5                    0.483                     0.490                     0.486
-    ## 6                    0.573                     0.632                     0.603
+    # A tibble: 6 × 3
+      `dm6 normfactor snr adj` `sac3 normfactor snr adj` `dual normfactor snr adj`
+                         <dbl>                     <dbl>                     <dbl>
+    1                    0.931                     0.926                     0.928
+    2                    0.900                     0.914                     0.907
+    3                    1.17                      1.16                      1.17 
+    4                    0.572                     0.621                     0.596
+    5                    0.483                     0.490                     0.486
+    6                    0.573                     0.632                     0.603
 
 ## paring mutate and select
 
@@ -624,7 +687,7 @@ seqstats %>%
 ## Pair Data
 
 From here:
-<https://datavizpyr.com/connect-paired-points-with-lines-in-scatterplot-in-ggplot2/>
+https://datavizpyr.com/connect-paired-points-with-lines-in-scatterplot-in-ggplot2/
 
 Example from gapminder: pair together data points of different years in
 same country by adding another column `paired`. This new column is
@@ -693,52 +756,52 @@ col2 <- rep(c("12", "10"), each = 10)
 data_new$Values <- col2
 ```
 
-    ## Warning in data_new$Values <- col2: Coercing LHS to a list
+    Warning in data_new$Values <- col2: Coercing LHS to a list
 
 ``` r
 head(data_new)
 ```
 
-    ## [[1]]
-    ## [1] "A"
-    ## 
-    ## [[2]]
-    ## [1] "A"
-    ## 
-    ## [[3]]
-    ## [1] "A"
-    ## 
-    ## [[4]]
-    ## [1] "A"
-    ## 
-    ## [[5]]
-    ## [1] "A"
-    ## 
-    ## [[6]]
-    ## [1] "B"
+    [[1]]
+    [1] "A"
+
+    [[2]]
+    [1] "A"
+
+    [[3]]
+    [1] "A"
+
+    [[4]]
+    [1] "A"
+
+    [[5]]
+    [1] "A"
+
+    [[6]]
+    [1] "B"
 
 ``` r
 data_new$group <- factor(data_new$group,levels = c("B", "A", "C", "D"))
 head(data_new)
 ```
 
-    ## [[1]]
-    ## [1] "A"
-    ## 
-    ## [[2]]
-    ## [1] "A"
-    ## 
-    ## [[3]]
-    ## [1] "A"
-    ## 
-    ## [[4]]
-    ## [1] "A"
-    ## 
-    ## [[5]]
-    ## [1] "A"
-    ## 
-    ## [[6]]
-    ## [1] "B"
+    [[1]]
+    [1] "A"
+
+    [[2]]
+    [1] "A"
+
+    [[3]]
+    [1] "A"
+
+    [[4]]
+    [1] "A"
+
+    [[5]]
+    [1] "A"
+
+    [[6]]
+    [1] "B"
 
 ## Apply function to groups within dataframe
 
@@ -823,10 +886,10 @@ Yeast_each<-rep(c("yeast_0.1k","yeast_1k","yeast_10k","yeast_100k","yeast_1000k"
 Yeast_each
 ```
 
-    ##  [1] "yeast_0.1k"    "yeast_0.1k"    "yeast_1k"      "yeast_1k"     
-    ##  [5] "yeast_10k"     "yeast_10k"     "yeast_100k"    "yeast_100k"   
-    ##  [9] "yeast_1000k"   "yeast_1000k"   "yeast_10000k"  "yeast_10000k" 
-    ## [13] "yeast_100000k" "yeast_100000k"
+     [1] "yeast_0.1k"    "yeast_0.1k"    "yeast_1k"      "yeast_1k"     
+     [5] "yeast_10k"     "yeast_10k"     "yeast_100k"    "yeast_100k"   
+     [9] "yeast_1000k"   "yeast_1000k"   "yeast_10000k"  "yeast_10000k" 
+    [13] "yeast_100000k" "yeast_100000k"
 
 ``` r
 # List itself repeated
@@ -834,10 +897,10 @@ Yeast_times<-rep(c("yeast_0.1k","yeast_1k","yeast_10k","yeast_100k","yeast_1000k
 Yeast_times
 ```
 
-    ##  [1] "yeast_0.1k"    "yeast_1k"      "yeast_10k"     "yeast_100k"   
-    ##  [5] "yeast_1000k"   "yeast_10000k"  "yeast_100000k" "yeast_0.1k"   
-    ##  [9] "yeast_1k"      "yeast_10k"     "yeast_100k"    "yeast_1000k"  
-    ## [13] "yeast_10000k"  "yeast_100000k"
+     [1] "yeast_0.1k"    "yeast_1k"      "yeast_10k"     "yeast_100k"   
+     [5] "yeast_1000k"   "yeast_10000k"  "yeast_100000k" "yeast_0.1k"   
+     [9] "yeast_1k"      "yeast_10k"     "yeast_100k"    "yeast_1000k"  
+    [13] "yeast_10000k"  "yeast_100000k"
 
 ``` r
 # Combine for more complex patterns
@@ -845,17 +908,17 @@ Yeastnew <-rep(c(Yeast_each), times = 3)
 Yeastnew
 ```
 
-    ##  [1] "yeast_0.1k"    "yeast_0.1k"    "yeast_1k"      "yeast_1k"     
-    ##  [5] "yeast_10k"     "yeast_10k"     "yeast_100k"    "yeast_100k"   
-    ##  [9] "yeast_1000k"   "yeast_1000k"   "yeast_10000k"  "yeast_10000k" 
-    ## [13] "yeast_100000k" "yeast_100000k" "yeast_0.1k"    "yeast_0.1k"   
-    ## [17] "yeast_1k"      "yeast_1k"      "yeast_10k"     "yeast_10k"    
-    ## [21] "yeast_100k"    "yeast_100k"    "yeast_1000k"   "yeast_1000k"  
-    ## [25] "yeast_10000k"  "yeast_10000k"  "yeast_100000k" "yeast_100000k"
-    ## [29] "yeast_0.1k"    "yeast_0.1k"    "yeast_1k"      "yeast_1k"     
-    ## [33] "yeast_10k"     "yeast_10k"     "yeast_100k"    "yeast_100k"   
-    ## [37] "yeast_1000k"   "yeast_1000k"   "yeast_10000k"  "yeast_10000k" 
-    ## [41] "yeast_100000k" "yeast_100000k"
+     [1] "yeast_0.1k"    "yeast_0.1k"    "yeast_1k"      "yeast_1k"     
+     [5] "yeast_10k"     "yeast_10k"     "yeast_100k"    "yeast_100k"   
+     [9] "yeast_1000k"   "yeast_1000k"   "yeast_10000k"  "yeast_10000k" 
+    [13] "yeast_100000k" "yeast_100000k" "yeast_0.1k"    "yeast_0.1k"   
+    [17] "yeast_1k"      "yeast_1k"      "yeast_10k"     "yeast_10k"    
+    [21] "yeast_100k"    "yeast_100k"    "yeast_1000k"   "yeast_1000k"  
+    [25] "yeast_10000k"  "yeast_10000k"  "yeast_100000k" "yeast_100000k"
+    [29] "yeast_0.1k"    "yeast_0.1k"    "yeast_1k"      "yeast_1k"     
+    [33] "yeast_10k"     "yeast_10k"     "yeast_100k"    "yeast_100k"   
+    [37] "yeast_1000k"   "yeast_1000k"   "yeast_10000k"  "yeast_10000k" 
+    [41] "yeast_100000k" "yeast_100000k"
 
 ## Add column to dataframe
 
@@ -887,10 +950,8 @@ country_num <- gapminder %>%
     group_indices(., country)
 ```
 
-    ## Warning: The `...` argument of `group_indices()` is deprecated as of dplyr 1.0.0.
-    ## ℹ Please `group_by()` first
-    ## Call `lifecycle::last_lifecycle_warnings()` to see where this warning was
-    ## generated.
+    Warning: The `...` argument of `group_indices()` is deprecated as of dplyr 1.0.0.
+    ℹ Please `group_by()` first
 
 ``` r
 gapmindernew <- gapminder
@@ -970,10 +1031,10 @@ seatbelts_df <- data.frame(as.matrix(Seatbelts), date = time(Seatbelts))
 head(seatbelts_df)
 ```
 
-    ##   DriversKilled drivers front rear   kms PetrolPrice VanKilled law     date
-    ## 1           107    1687   867  269  9059   0.1029718        12   0 1969.000
-    ## 2            97    1508   825  265  7685   0.1023630         6   0 1969.083
-    ## 3           102    1507   806  319  9963   0.1020625        12   0 1969.167
-    ## 4            87    1385   814  407 10955   0.1008733         8   0 1969.250
-    ## 5           119    1632   991  454 11823   0.1010197        10   0 1969.333
-    ## 6           106    1511   945  427 12391   0.1005812        13   0 1969.417
+      DriversKilled drivers front rear   kms PetrolPrice VanKilled law     date
+    1           107    1687   867  269  9059   0.1029718        12   0 1969.000
+    2            97    1508   825  265  7685   0.1023630         6   0 1969.083
+    3           102    1507   806  319  9963   0.1020625        12   0 1969.167
+    4            87    1385   814  407 10955   0.1008733         8   0 1969.250
+    5           119    1632   991  454 11823   0.1010197        10   0 1969.333
+    6           106    1511   945  427 12391   0.1005812        13   0 1969.417

@@ -1,6 +1,6 @@
 ---
 title: "Dataframe Manipulation in R"
-format: html
+format: gfm
 toc: true
 code-overflow: wrap
 theme: cosmo
@@ -69,7 +69,7 @@ knitr::kable(head(seqstats))
 Use `read.table()` function: first argument specify path to file, sep argument tells R what separates the columns of your data (space, comma, or tab). Example below is for tab separated TSV. header = T (header = True) means the first row is the headers for columns. 
 
 ```{r} 
-TRP_input_tagLen <- read.table("LP_81/LP_81/dm6_tagdirs/HelaS3_TRP_0hr_input_1_DSG-FA.dm6.GCcheck-tagdir/tagLengthDistribution.txt", sep="\t", header = T)
+TRP_input_tagLen <- read.table("tagLengthDistribution.txt", sep="\t", header = T)
 
 knitr::kable(head(TRP_input_tagLen, n = 10))
 ```
