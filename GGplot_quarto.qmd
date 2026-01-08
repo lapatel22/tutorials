@@ -1,8 +1,7 @@
 ---
 title: "ggplot_quarto"
-author: "Lauren Hodge"
-date: '2023-08-9'
-output: html
+author: "Lauren Patel"
+output: gfm
 toc: true
 theme: cosmo
 embed-resources: true

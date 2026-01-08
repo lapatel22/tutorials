@@ -1,8 +1,7 @@
 ---
 title: "R_tidyverse_cheatsheet"
-format:
-  html:
-    embed-resources: true
+format: gfm
+embed-resources: true
 code-overflow: wrap
 toc: true
 ---
