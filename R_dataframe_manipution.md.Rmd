@@ -1,0 +1,561 @@
+---
+title: "Dataframe Manipulation in R"
+format: html
+toc: true
+code-overflow: wrap
+theme: cosmo
+---
+
+# Quarto formatting: 
+
+If you are new to R, disregard this section. It's purpose is only to show the code necessary to make your own quarto document like this one.
+
+| Input | Output |
+|---------|:-----|
+| YAML header line `code-overflow: wrap`    | Long code overflows    |
+| YAML header line `toc: true`              | Show table of contents |
+| `#| eval: false` code block top line      | Display code, don't run|
+| `>` at the beginning of a line            | Indents text           |
+| \`display code here\`                     | `display code here`    |
+| What is \`\ r  2 + 2\`                    | What is `r 2 + 2`      |
+
+# Intro Steps
+## Load Libraries and Presets
+
+If you are brand new to R, you will need to first install the libraries shown with `install.packages("libraryname")`. However, downloading only happens ONCE, and you shouldn't put the install.packages line of code in a doc like this that will be rerun, so I didn't include it here :). Once you have packages installed, you need to "load" them every time you open R with `library(libraryname)` as I have done below.
+
+```{r}
+library(readxl)    # used to load excel files in R
+library(tidyverse) # see tidyverse tutorial, powerful set of tools for data maniputation
+library(gapminder) # public dataset used for examples
+library(viridis)   # library of colorblind-friendly palettes
+```
+
+### Theme for ggplot
+```{r} 
+theme_set(theme_classic()) # feel free to not use this theme if you find a different one you prefer
+```
+
+## Some general notes for this document: 
+
+1. if you see `%>%` in code, this is the pipe operator used in tidyverse. In the newest version of R (after 4.0) you can also use the standard pipe `|`
+2. Most examples will be either my own or public data commonly used in R tutorials. One example of public data is the gapminder dataset which is loaded above with `library(gapminder)`. It contains demographic/economic/health information on countries from 1952-2007. 
+3. My own data is used when its a good example for bioinformatic-specific tasks, OR when it's a good example of "human-annotated" data being difficult to feed into programs. There are lots of issues I learned hard way (for example, ggplot does not work properly if your variables for x/y start with a number, and my sample IDs usually start with an experiment number, go figure)
+4. I tried to load all relevant example data in the *Data Import* section. Because not everyone has these files, I also run commands to visualize their structure (what their rows/columns are, etc) when they are loaded. I also try to show before/after examples to show what each line of code does when possible, or at least a verbal explanation.
+
+Commands useful to "visualize" (actually see) your raw data are invaluable. You will see lots of them below but here are my most used: 
+
+For a given "dataset":
+
+1. `View(dataset)` will automatically open the dataset in a new tab. If you run this line of code in a quarto doc, a popup window with the dataset will open while it executes. A cool feature is that if you run code to change a column or row name, it will update automatically if the code worked :)
+2. `head(dataset)` will output the first few lines of your dataset inside your document/console/wherever you run the code. The default for head() is 6 rows, but you can change this with `head(dataset, n = 10)` to make it 10 rows, etc. Also `tail()` does the same thing with the end of your dataset.
+3. If you are working within a Quarto doc like this one, `knitr::kable(dataset)` displays the table in a much more reader-friendly format than head(). You will see this shortly below. You can also do more fancy things like captions, etc.
+
+# Data Import
+
+## From excel (try to avoid)
+
+I keep a master spreadsheet with sequencing statistics for all of my NGS experiments:
+
+```{r}
+seqstats <- read_excel("Sequencing_Stats_260107.xlsx", 
+    sheet = "all_dualspike_metadata")
+knitr::kable(head(seqstats))
+```
+
+## Import from TSV, CSV, etc
+
+Use `read.table()` function: first argument specify path to file, sep argument tells R what separates the columns of your data (space, comma, or tab). Example below is for tab separated TSV. header = T (header = True) means the first row is the headers for columns. 
+
+```{r} 
+TRP_input_tagLen <- read.table("tagLengthDistribution.txt", sep="\t", header = T)
+
+knitr::kable(head(TRP_input_tagLen, n = 10))
+```
+
+If you use read.delim it automatically defaults `sep = "\t"`, perfect for tsv files.
+
+# Getting Basic Information
+
+## Basic operations: 
+
+Isolating a column by name: `seqstats$cell`
+
+If there are spaces in the name, use "`", as in 
+
+```{r, eval = FALSE}
+seqstats$`experiment ID`
+```
+
+Print column names: `names(seqstats)` or `colnames(seqstats)`
+
+Isolate column by position: `seqstats[1]`
+
+## Cleanup column names in Kable with `gsub()`
+
+Usually dataframe column names have _ or . in their name for ease of coding, but you might want to display the names in a more human-readable way in the kable:
+
+Example below replaces underscores in column names with spaces only for knitr::kable() to display, WITHOUT modifying the original dataset.
+
+```{r}
+knitr::kable(head(seqstats), col.names = gsub("[_]", " ", names(seqstats)))
+```
+
+## Variable classes
+
+```{r}
+str(seqstats)
+```
+
+- fct = categorical variable (factor)
+- dbl = dibble
+- int = continuous variable (integer)
+- num = numeric
+- logi = logical variable 
+- chr = character
+
+Note that categorical variables containing numbers will automatically be treated as a continuous variable, to force it to be categorical replace the variable "Year" with "factor(Year)"
+
+# Searching
+
+## `grep()` vs `grepl()`
+
+**`grep()`** is a built-in function that returns indices of matched items or the items themselves
+
+In the below code we are searching for:
+
+1. the string "_1hr"
+2. within the seqstats dataset
+3. within this dataset, the ID column
+
+```{r}
+grep("_1hr", seqstats$ID)
+```
+
+**`grepl()`** is very similar, but instead of returining indices of the matches location, it returns a logical vector, with TRUE representing a match, and FALSE if not a match
+
+The same example with grepl:
+```{r}
+grepl("_1hr", seqstats$ID)
+```
+
+## Search and return row of dataframe
+
+Syntax: `dataframe[grep("string", dataframe$column), ]`
+
+Use indexes to return row with match: works with `grep` and `grepl`
+
+```{r}
+seqstats[grep("0hr", seqstats$ID), ] %>% knitr::kable()
+```
+
+## Multiple matches with logical operators
+
+```{r}
+seqstats[grep("69a|69e", seqstats$ID), ] %>% knitr::kable()
+```
+
+# Split verbose column into multiple with `separate_wider_regex()`
+
+Using `separate_wider_regex()` from tidyr package, info here: https://tidyr.tidyverse.org/reference/separate_wider_delim.html
+
+Syntax: 
+
+```{r}
+#| eval = FALSE
+
+dataframe %>% separate_wider_regex(
+  cols = columntosplit, 
+  patterns = c(
+    newcol1 = "regex",
+    "regex", #if you want to discard anything between columns
+    newcol2 = "regex"
+  ))
+
+```
+
+Regex: 
+
+- `^` = anchor beginning of string
+- `$` = anchor end of the string
+- `.` = matches any character but newline
+- [[:alpha:]] = letters
+- [[:digit:]] = digits
+- [[:alnum:]] = letters and numbers
+- [[:graph:]] = any character but not white space/blank
+
+Special: `+` goes after a match, means it can be counted more than once! Useful instead of denoting `[:digit:][:digit:]` for a two digit number
+
+## Example with my sequencing data
+
+My ChIP samples are labeled with the following format in the sample sheet before sequencing:
+
+[experiment##][sampleID]\_[celltype]\_[timepoint]\_[treatment]\_[antibody]\_[rep]
+
+```{r}
+knitr::kable(head(seqstats))
+```
+
+# Combine dataframes
+
+## Tidyverse `cbind()`
+
+
+## Tidyverse `rbind()`
+
+
+## Base R `merge()`
+
+Structure: `merge(df_x, df_y, by = "key", all = TRUE/FALSE)`
+
+1. Can only merge two dataframes at a time (df_x, df_y)
+2. "key" is a column name that must be common between the two dataframes, used to "match" the rows even if the dfs are in a different order
+3. all = T/F decides whether missing rows are kept (filled 0) or discarded
+
+## `bind_rows()`
+
+Fairly narrow use, I use only if you are certain all columns match exactly. For example in the case earlier where I split a dataframe into only IP or input samples, then wanted to recombine
+
+Copied from above: 
+
+```{r, eval=FALSE}
+seqstats <- bind_rows(seqstats, new_data)
+```
+
+
+# Changing Names with `rename_with()` and `gsub()`
+
+## Change column names 
+
+Goal: Replace any slashes "/" with _ in column names using `rename_with` (from tidyverse). I do this because the slashes being a special character could cause issues later.
+
+Code: `rename_with(~ gsub("/", "_", .x), contains("/"))`
+
+Breakdown: 
+
+- `rename_with()` is the general function
+- using `gsub` as a "global substitutor"
+- first argument of gsub is the string to be replaced: "/"
+- second gsub argument is the thing to replace it with: "_"
+- third gsub argument is the dataset to be "operated" on. In this case because we used the tidyverse pipe operator %>% .x refers to what's being "piped in"
+- rename_with() argument contains("/") means the gsub function is only applied to strings that contain the "/" string. Sometimes this argument is helpful if you don't want to replace ALL "/", but for example ones that have a certain word after. For example `contains("/sac3")` would have only changed the columns with "/sac3" in the column name, not "hg38/dm6"
+
+Before:
+
+```{r}
+seqstats %>% head() %>% knitr::kable()
+```
+
+After: 
+
+```{r}
+seqstats %>% rename_with(~ gsub("/", "_", .x), contains("/")) %>% head() %>% knitr::kable()
+```
+
+## Remove All Numbers from Column Names
+
+Format: 
+`names(dataset) <- gsub("[[:digit:]]", "", names(dataset))`
+
+Example
+```{r}
+#first copy the dataset with a new name, so we don't mess with the original
+seqstats_new <- seqstats
+
+#change all column names, removing any number
+names(seqstats_new) <- gsub("[[:digit:]]", "", names(seqstats))
+
+# checking
+seqstats_new %>% head()
+```
+
+
+### Rename Column by Order
+
+`colnames(df)[1] <- "New Column 1 Name"`
+
+Example: 
+
+```{r}
+#first copy the dataset with a new name, so we don't mess with the original
+seqstats_newID <- seqstats
+
+#changing the name: 
+colnames(seqstats_newID)[1] <- "newID"
+
+#checking:
+knitr::kable(head(seqstats_newID))
+```
+
+Where the # above is the column number (above changes the name of the first column)
+
+## Change data in column
+
+Example changed the sample names to remove the experiment number at the beginning, as ggplot can't take a number at the beginning of a variable.
+
+```{r}
+# seqstats$`experiment ID` <-gsub("78", "78_test", as.character(seqstats$`experiment ID`))
+knitr::kable(head(seqstats))
+```
+
+# random downsampling of data
+
+```{r, eval = FALSE}
+seqstats[sample(nrow(seqstats), 10),]
+```
+
+# Cleanup data - set NAs to 0
+
+```{r}
+# set NAs in numeric columns to 0
+seqstats[is.na(is.numeric(seqstats))] <- 0
+```
+
+# Tidyverse basics
+
+## `mutate()` can create new column based on others
+
+Example below (code not run) uses multiple tidyverse functions:
+
+```{r}
+seqstats %>% 
+  mutate(total_reads = `bwa hg38 -q 50` + `bwa dm6 -q 50` + `bwa sac3 -q 50`) %>%
+  head()
+```
+
+## select columns 
+
+By full name: 
+```{r}
+seqstats %>% 
+   select(., IP) %>% head()
+```
+
+By partial match with `contains`
+
+```{r}
+seqstats %>% 
+   select(., contains("snr")) %>% head()
+```
+
+
+## paring mutate and select
+
+1. `mutate()` is used to create a new column. First argument is the column name, to be filled with some data = 
+2. `select()` from the piped in dataframe selects specific columns matching arguments inside (), looks for partial string matches with `contains()`
+3. The columns selected in (2) are piped into `rowMeans()` which takes the average of the two columns for each row individually. 
+4. Resulting data put in new column defined by `mutate()`
+
+```{r}
+seqstats %>% 
+  mutate(avg_normfactor = select(., contains("snr")) %>% 
+           rowMeans()) %>% head() %>% knitr::kable()
+```
+
+## Pair Data
+
+From here: https://datavizpyr.com/connect-paired-points-with-lines-in-scatterplot-in-ggplot2/ 
+
+Example from gapminder: pair together data points of different years in same country by adding another column `paired`. This new column is filled in with numbers sequentially from 1-(# of rows/2) as there are two rows per country. These numbers are each repeated twice, leaving us with a column with a unique identifier for each "paired" set of points.
+ 
+```{r} 
+gapminder_paired <- gapminder %>% mutate(paired = rep(1:(n()/2), each = 2), year = factor(year))
+
+knitr::kable(head(gapminder_paired))
+```                        
+
+In the section Create data --> Column filled using patterns I use this to make new columns for my data.
+
+## Long Format (TidyR format) with `pivot_longer()` 
+
+Pivot_longer arguments: 
+ - cols: can be all, or select (example is all columns EXCEPT named Distance_from_tss)
+ - names_to: names of columns selected are now entries within this columns (usually these are sample names for me)
+ - values_to: the rows within each column that are now in "Sample" are in this new column
+
+Chose specific columns: 
+
+```{r}
+seqstats_tidy <- 
+    seqstats %>% pivot_longer(
+      cols = c(`bwa hg38 -q 50`, `bwa dm6 -q 50`, `bwa sac3 -q 50`), 
+      names_to = "Species", 
+      values_to = "Reads")
+
+knitr::kable(head(seqstats_tidy))
+```
+
+## Reorder column contents
+
+General Example
+
+Replicate data with `data_new <- data`
+
+Reordering group factor levels
+   
+```{r}
+data_new <- rep(c("A","B", "C", "D"), each = 5)
+col2 <- rep(c("12", "10"), each = 10)
+data_new$Values <- col2
+head(data_new)
+data_new$group <- factor(data_new$group,levels = c("B", "A", "C", "D"))
+head(data_new)
+```
+
+## Apply function to groups within dataframe
+
+Dataset: 
+```{r, eval = FALSE}
+# import data
+alignstats <- read.delim("~/Research/spike_commentary/public_data_alignments.txt")
+# set replicate as factor not numeric
+alignstats$Rep <- as.factor(alignstats$Rep)
+```
+
+### Function to calculate variation in inputs within each paper
+```{r, eval = FALSE}
+# function to apply to each author: 
+get_input_variation <- function(df, .df) {
+   dfnew <- df                                # copy input dataframe
+   mininput <- min(df$spike_target, na.rm = T) # get min from spike_targ
+   var <- as.numeric((df$spike_target)/mininput) # make var column
+   dfnew %>%
+     mutate(var = var)                          # add to df
+}
+```
+
+```{r, eval = FALSE}
+# grouping df 
+input_var_stats <- alignstats %>% 
+  filter(Mark == "input") %>%      # only inputs
+  select(2,5:10, 13) %>%           # remove extraneous data
+  group_by(Author) %>%             # need to group by paper
+  group_map(get_input_variation, .keep = TRUE) %>% # keep group variable
+  bind_rows()
+```
+
+# Create data
+
+## Empty vector
+
+Below: creates a new vector, gives it a class (numeric) with length equal to a vector previously made
+
+`hg38_total_mapq10 <- vector("numeric", length(SRA))`
+
+## Column filled with basic math
+
+Adding three new columns: 
+
+1. dm6_sac3 = ratio between dm6 and sac3 reads per sample
+2. dm6_hg38 = ratio between dm6 and hg38 reads per sample
+3. sac3_hg38 = ratio between sac3 and hg38 reads per sample
+
+```{r, eval = FALSE}
+seqstats_230910_expanded <- seqstats_230910_expanded %>%
+  mutate(dm6_sac3 = dm6_nodup_q10/sac3_nodup_q10) %>%
+  mutate(dm6_hg38 = dm6_nodup_q10/hg38_dups) %>% 
+  mutate(sac3_hg38 = sac3_nodup_q10/hg38_dups)
+```
+
+## rowMeans()
+
+```{r, eval = FALSE}
+counts_BRD4_HA_tidy <- counts_BRD4_HA_tidy %>% 
+  mutate(HA_avg_0.5 = select(., contains("HA_0.5ul")) %>% rowMeans()) %>%
+  mutate(HA_avg_1 = select(., contains("HA_1ul")) %>% rowMeans()) 
+```
+
+## Column filled using patterns
+
+Each means that the objects x, y, z in the vector (c(x, y, z), each = 3) will be repeated by this pattern: 
+x, x, x, y, y, y, z, z, z
+
+Using "times" instead (c(x, y, z), times = 3) results in 
+x, y, z, x, y, z, x, y, z
+
+You can use both to create more complex patterns as shown in the example below: 
+
+```{r}
+# List with each element repeated together
+Yeast_each<-rep(c("yeast_0.1k","yeast_1k","yeast_10k","yeast_100k","yeast_1000k", "yeast_10000k", "yeast_100000k"), each=2)
+Yeast_each
+
+# List itself repeated
+Yeast_times<-rep(c("yeast_0.1k","yeast_1k","yeast_10k","yeast_100k","yeast_1000k", "yeast_10000k", "yeast_100000k"), times=2)
+Yeast_times
+
+# Combine for more complex patterns
+Yeastnew <-rep(c(Yeast_each), times = 3)
+Yeastnew
+```
+
+## Add column to dataframe 
+
+This only works if the object Treatment is a single column 
+```{r}
+#| eval: false
+#df$Treatment <- Treatment
+```
+
+## Add column from dataframe (containing > 1 column) to different dataframe
+
+Dataframe 1 is the dataframe you want to add to 
+
+```{r, eval = FALSE}
+#| eval: false
+df1['newColName'] = df2['ExistingColumnInDF2']
+```
+
+## Make Dataframe from vectors
+
+```{r}
+#| eval: false
+df <- data.frame(vector1, vector2, vector3)
+```
+
+## Add column to number groups
+
+```{r}
+country_num <- gapminder %>% 
+    group_by(country) %>% 
+    group_indices(., country)
+
+gapmindernew <- gapminder
+
+gapmindernew$country_num <- as.factor(country_num)
+
+knitr::kable(head(gapmindernew))
+```
+
+# Boolean Logic
+
+- !x = NOT x (everything else)
+- x & y = x AND y
+- x && y = 
+- x | y = x OR y
+- x || y = 
+- xor(x, y) = 
+
+Example: get rows whose column `library ID` contents matched the partial string `DPY30` OR `RBBP5`.
+
+```{r}
+seqstats[grep("DPY30|RBBP5", seqstats$`library ID`), ] %>% head(n = 10) %>% knitr::kable()
+```
+
+For AND matches, we need to modify the notation, as `grep("DMSO&Rpb1", ...)` will only find a match if there is a library ID that contains the continuous string "DMSO Rpb1" in that exact order. Also, `grep` will not work, we need `grepl`. We need to do: 
+
+```{r}
+seqstats[grepl("DMSO", seqstats$`library ID`) & grepl("Rpb1", seqstats$`library ID`), ] %>%
+head() %>% knitr::kable()
+```
+
+# Special cases
+
+##  Convert Time Series to Dataframe with `as.matrix()` and `data.frame()`
+
+Example from seatbelts dataset: need to add a new column "date" and convert the time series to a table with the year in "date"
+```{r}
+data("Seatbelts")
+seatbelts_df <- data.frame(as.matrix(Seatbelts), date = time(Seatbelts))
+head(seatbelts_df)
+```
