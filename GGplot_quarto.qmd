@@ -1,0 +1,944 @@
+---
+title: "ggplot_quarto"
+author: "Lauren Hodge"
+date: '2023-08-9'
+output: html
+toc: true
+theme: cosmo
+embed-resources: true
+---
+
+```{r setup, include=FALSE, message=FALSE, warning = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(readxl)
+library(tidyverse)
+theme_set(theme_bw())
+```
+
+# Importing Data
+
+## From excel
+```{r} 
+#dataframe <- read_excel("~/Research/path/to/folder/file.xlsx")
+#View(dataframe)
+```
+
+## From csv/tsv
+Use read.table function: first argument specify path to file, sep argument tells R what separates the columns of your data (space, comma, or tab). Example below is for tab separated TSV. header = T (header = True) means the first row is the headers for columns. 
+
+```{r, eval = FALSE} 
+RGFP_input_tagLen <- read.table("~/Research/LH_57_csRNA/Hela_sync_RGFP_input/tagLengthDistribution.txt", 
+      sep="\t", header = T)
+```
+
+## Hiding Code
+
+You can embed plots without showing code:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+# Data cleanup
+
+## Remove a pattern from a column name
+
+Below example replaces "_synchela_" with "_"
+```{r}
+#dataframe %>% rename_with(~ gsub("_synchela_", "_", .x), contains("_synchela"))
+```
+
+## TidyR
+
+### `gather()` (outdated, use pivot_longer now!)
+
+Convention: `Gather(new independent var, new dependent var, column1, column2, column3, columnN)`
+
+ - puts column names in *new independent var* 
+ - values in *new dependent var*
+
+```{r, eval = FALSE}
+LH51_hg38only_phredtrim_mapq_tidy <- LH51_phredtrim_hg38_MAPQscores %>% gather(Sample, Counts, a_count, b_count, c_count, d_count, q_count, r_count, s_count, t_count)
+```
+
+### `pivot_longer()`
+
+```{r, eval = FALSE}
+counts_megapeaks_hg38_LH56_tidy <- counts_megapeaks_hg38_LH56_clean %>% 
+  select(PeakID, contains("Tag")) %>%    
+  pivot_longer(
+      cols = !PeakID,           # pivot all cols except PeakID
+      names_to = "Sample",      # sample names become factor col
+      values_to = "Peak_Tags")  # all values in new col
+```
+
+# Base Plots
+
+## Line
+
+> `Plot_line <- ggplot(data=dataframe, aes(x=xvariable)) + geom_line(aes(y=yvariable1, color= ”name/hexcode”)), + geom_line(aes(y=yvariable2, color= “name/hexcode”)), + geom_line(etc.) + labs (x = “X Axis Label”, y = “Y Axis Label”, title = “Plot title”)`
+
+```{r, fig.width=4, fig.height=3}
+ggplot(mtcars, aes(wt, mpg, group = cyl)) + 
+  geom_line(aes(color = cyl)) + 
+  labs(title = "Miles per Gallon vs Car Weight, Colored by # of Cylinders")
+```
+
+## Histogram
+
+```{r, fig.width=4, fig.height=3}
+density_hist <- ggplot(data=iris, aes(x=Sepal.Width, fill=Species))
+density_hist + 
+  geom_density(stat="density", alpha=I(0.2)) + 
+  xlab("Sepal Width") + 
+  ylab("Density") + 
+  ggtitle("Histogram & Density Curve of Sepal Width")
+```
+## Pie
+
+```{r}
+input_presence <- data.frame(input_status = c("sufficient inputs", "some inputs missing", "no inputs present"), paper_count = c(27, 12, 14))
+```
+
+```{r, fig.width= 5, fig.height = 4}
+library(scales)
+
+input_piechart <- ggplot(input_presence, aes(x="", y= paper_count, fill=input_status)) +
+  geom_bar(stat="identity", width=1, alpha = 0.9) +
+  coord_polar("y", start=0) +
+  theme_void() +
+  geom_text(aes(y = paper_count/3 + c(0, cumsum(paper_count)[-length(paper_count)]), 
+            label = paper_count), size=5) + 
+  scale_fill_manual(values = c("firebrick3", "darkorange2","goldenrod1"), name = "Status of inputs") + 
+  labs(title = "Status of Non-IP Input Controls in ChIP-seq Spike-in Datasets",
+       subtitle = "n = 53")
+
+input_piechart
+```
+
+## Scatterplot
+```{r, fig.width=6, fig.height=4}
+ggplot(diamonds, aes(carat, price, color = clarity)) +
+  geom_point()
+```
+
+Remove outline of point (for scatterplots with many overlapping points)
+```{r, fig.width=6, fig.height=4}
+ggplot(diamonds, aes(carat, price, color = clarity)) +
+  geom_point(stroke = NA, alpha = 0.3)
+```
+
+NOTE: for scatterplots the title in labs() must come first and be lower case
+
+## Density Scatterplots
+Make some data
+```{r, fig.width=4, fig.height=3}
+# Data
+a <- data.frame(x=rnorm(20000, 10, 1.9), y=rnorm(20000, 10, 1.2) )
+b <- data.frame(x=rnorm(20000, 14.5, 1.9), y=rnorm(20000, 14.5, 1.9) )
+c <- data.frame(x=rnorm(20000, 9.5, 1.9), y=rnorm(20000, 15.5, 1.9) )
+data <- rbind(a,b,c)
+ 
+# Basic scatterplot
+ggplot(data, aes(x=x, y=y) ) +
+  geom_point()
+```
+
+In the above graph, where is the highest density of points?
+
+Density plots - prevent overplotting
+Instead we should plot a 2D histogram
+
+Default:
+```{r, fig.width=4, fig.height=3}
+# 2d histogram with default option
+ggplot(data, aes(x=x, y=y) ) +
+  geom_bin2d() +
+  theme_bw()
+```
+
+Make it pretty:
+```{r, fig.width=4, fig.height=3}
+# Bin size control + color palette
+ggplot(data, aes(x=x, y=y) ) +
+  geom_bin2d(bins = 70) +
+  scale_fill_continuous(type = "viridis") +
+  theme_bw()
+```
+
+### 2D Density plot with Hex bins
+
+```{r, fig.width=4, fig.height=3}
+ggplot(data, aes(x=x, y=y)) +
+  geom_hex() +
+  theme_bw()
+```
+
+```{r, fig.width=4, fig.height=3}
+# Bin size control + color palette
+ggplot(data, aes(x=x, y=y)) + 
+  geom_hex(bins = 70) + 
+  scale_fill_continuous(type = "viridis")
+```
+
+### 2d distribution with geom_density_2d or stat_density_2d
+
+Contour only
+```{r, fig.width=4, fig.height=3}
+ggplot(data, aes(x=x, y=y) ) +
+  geom_density_2d()
+```
+
+Area only
+```{r, fig.width=4, fig.height=3}
+ggplot(data, aes(x=x, y=y) ) +
+  stat_density_2d(aes(fill = ..level..), geom = "polygon")
+```
+
+Area + Contour
+```{r, fig.width=4, fig.height=3}
+ggplot(data, aes(x=x, y=y) ) +
+  stat_density_2d(aes(fill = ..level..), 
+                  geom = "polygon", colour="white")
+```
+
+Using Raster
+```{r, fig.width=4, fig.height=3}
+ggplot(data, aes(x=x, y=y) ) +
+  stat_density_2d(aes(fill = ..density..), geom = "raster", contour = FALSE) +
+  scale_x_continuous(expand = c(0, 0)) +
+  scale_y_continuous(expand = c(0, 0)) +
+  theme(
+    legend.position='none'
+  )
+```
+
+## Scatterplot + Smoothing Line
+
+```{r, fig.width=4, fig.height=3}
+ggplot(diamonds, aes(carat, price, color = clarity)) +
+  geom_point() +
+  geom_smooth() + 
+  labs(title = "Price of Diamonds by Cut and Clarity")
+```
+
+## Add Linear model
+
+```{r, fig.width=4, fig.height=3}
+ggplot(diamonds, aes(carat, price, color = clarity)) +
+  geom_point(alpha = 0.1) +
+  geom_smooth(method = "lm") + 
+  labs(title = "Price of Diamonds by Cut and Clarity")
+```
+
+## Text Scatter Plot
+
+```{r, fig.width=4, fig.height=3}
+# Base layer
+plt_mpg_vs_wt <- ggplot(mtcars, aes(wt, mpg))
+
+# Use text layer and map cyl to label
+plt_mpg_vs_wt +
+  geom_text(aes(label = mtcars$cyl)) + 
+  labs(title = "MPG vs weight for Cars")
+```
+
+Above plot is the weight of the car vs the miles per gallon, with each “point” being labeled with the number of cylinders the car has (a categorical variable, values either 4, 6 or 8)
+
+Label points with text of row names:
+```{r, fig.width=4, fig.height=3}
+ggplot(mtcars, aes(wt, mpg, color = cyl)) + 
+  geom_text(label = rownames(mtcars), color = "red")
+```
+
+## Barplots - Stacked
+
+```{r, fig.width=4, fig.height=3}
+ggplot(iris, aes(Sepal.Length, fill = Species)) +
+  geom_bar() + 
+  labs(x = "Species", y = "Sepal Length")
+```
+
+### Manual Color Scheme and Labeling
+
+```{r, fig.width=4, fig.height=3}
+palette <- c(setosa = "#387EB8", versicolor = "#D11A1C", virginica = "#314EB9")
+ggplot(iris, aes(Sepal.Length, fill = Species)) +
+  geom_bar() +
+  labs(x = "Species", y = "Count") +
+  # Set the fill color scale
+  scale_fill_manual("Transmission", values = palette)
+```
+
+## Barplots - side by side
+
+```{r, fig.width=4, fig.height=3}
+# Set the position
+ggplot(iris, aes(Sepal.Length, fill = Species)) +
+  geom_bar(position = "dodge") +
+  labs(x = "Species", y = "Count") + 
+  scale_fill_manual("Species", values = palette) 
+```
+
+## Violin Plot
+
+```{r, fig.width=4, fig.height=3}
+ggplot(data = diamonds, aes(x=cut, y=price, fill = cut)) + 
+  geom_violin()
+```
+
+## Dotplot (2 category variables)
+```{r, fig.width=4, fig.height=3, eval = FALSE}
+setwd("~/Research/R_for_fun/data_vis")
+species <- read_csv("national_parks_biodiv/species.csv")
+species_clean <- species %>% 
+  filter(Occurrence == "Present") %>%
+  rename_with(~ gsub(" ", "_", .x), contains(" "))
+# removed spaces in variable names
+
+species_clean$Park_Name <- gsub(" National Park", "", 
+                                as.character(species_clean$Park_Name))
+# removed "National Park" from Park_Name
+
+acadia <- filter(species_clean, Park_Name == "Acadia")
+ggplot(data = acadia) + 
+  aes(x = Category, y = Abundance, color = Abundance) + 
+  geom_count() + 
+  labs(title = "Abundance of Biodiversity in \nAcadia National Park")
+## linebreak in title
+```
+
+## Ridgeline
+
+```{r}
+library(ggridges)
+```
+
+In most cases you won't need a legend here since each row of the ridgeline plot is clearly visible. Repress the legend with `theme(legend.position = "none")`
+
+```{r, fig.width=5, fig.height=4}
+ggplot(diamonds) + 
+  aes(x = price, y = clarity, fill = clarity) + 
+  geom_density_ridges() + 
+  theme(legend.position = "none")
+```
+
+Can also make a histogram: 
+
+```{r, fig.width=5, fig.height=4}
+ggplot(diamonds) + 
+  aes(x = price, y = clarity, fill = clarity) + 
+  geom_density_ridges(alpha = 0.6, stat = "binline", bins = 50) + 
+  theme(legend.position = "none")
+```
+
+You can also map the color `fill` to a numeric variable (for instance the price on the x axis). There are two requirements: 
+
+1. Use `geom_density_ridges_gradient()` or `geom_ridgeline_gradient()`
+2. Instead of direcly settging the fill to a variable (ex. `fill = price` in the example below) you have to set it to call the variable you have already defined. i.e. if you want fill = price, and x = price, then fill = stat(x). 
+
+Also note I used log(price) because otherwise the upper outliers in price warp the scale and no changes in color are noticeable (i.e. purely for illustrative purposes)
+
+```{r, fig.width=5, fig.height=4}
+ggplot(diamonds) + 
+  aes(x = log(price), y = clarity, fill = stat(x)) + 
+  geom_density_ridges_gradient(scale = 2) + 
+  theme(legend.position = "none") + 
+  scale_fill_distiller("RdYlBu")
+```
+
+## Marginal Histograms 
+
+```{r}
+library(ggExtra)
+```
+
+```{r, fig.width=8, fig.height=8}
+diamonds_scatter <- ggplot(diamonds, aes(carat, price, color = clarity)) +
+  geom_point() +
+  labs(title = "Price of Diamonds by Cut and Clarity")
+
+ggMarginal(diamonds_scatter, groupColour = TRUE, groupFill = TRUE)
+```
+
+
+# Add-ons
+
+## Set Properties to Categorical Variable
+
+> In the `geom`, inside `aes()` set a property (i.e. alpha, shape, size, etc.) = `Categorial Variable`
+
+> Add `scale_property_manual(values = c(value1, value2,etc), name = "Categorial Variable", labels = c("Category 1", "Category 2"))` where "property" is alpha, shape, color, etc.
+
+A big advantage of this method is you can set the name of the legend and the categories within the `scale_property_manual`, so if the variable name is long/cumbersome you can make the legend easier to read
+
+```{r, fig.width=4, fig.height=3}
+mtcars$cyl = as.factor(mtcars$cyl)
+ggplot(mtcars, aes(wt, mpg, group = cyl)) + 
+  geom_point(aes(alpha = cyl), color = "firebrick", size = 4) + 
+  labs(title = "Miles per Gallon vs Car Weight") +
+  scale_alpha_manual(values = c(0.2, 0.5, 1), name = "Cylinders", labels = c("4", "6", "8"))
+```
+
+## Faceting
+
+### Subplots based on a categorical variable
+
+```{r}
+ggplot(diamonds, aes(carat, price, color = clarity)) +
+  geom_point(alpha = 0.5, stroke = NA) +
+  geom_smooth() + facet_wrap(~ clarity)
+```
+
+### Subplots in columns and rows (split by 2 variables)
+
+```{r, eval = FALSE}
+# Base plot
+insurance <- read_csv("~/Research/R_for_fun/archive/insurance.csv")
+smoker_insurance <- ggplot(data = insurance) + 
+  aes(x = smoker, y= charges) + 
+  geom_jitter() 
+
+# Graph by sex and region
+smoker_insurance + 
+  geom_jitter(aes(color = bmi)) + 
+  facet_grid(cols = vars(region), rows = vars(sex))
+```
+
+### Reordering subplots: 
+
+Reordering group factor levels
+```{r}
+data_new<- rep(c("A","B", "C", "D"), each = 5)
+col2 <- rep(c("12", "10"), each = 10)
+data_new$Values <- col2
+#View(data_new)
+data_new$group <- factor(data_new$group,levels = c("B", "A", "C", "D"))
+head(data_new)
+```
+
+### faceting other plot types: 
+
+```{r}
+ggplot(diamonds) + 
+  aes(x = log(price), y = clarity) + 
+  geom_density_ridges_gradient(aes(x = log(price), fill = stat(x)), alpha = 0.4) + 
+  scale_fill_distiller(palette = "Spectral") + 
+  facet_wrap(~ color)
+```
+
+### Faceting and zooming on subset of plot
+
+Example of a plot that needs zooming:
+```{r, eval = FALSE}
+public_data_submit_revisions <- read.delim("~/Research/spike_commentary/public_data_submit_revisions.tsv")
+
+public_data_submit_revisions$filtered.spike_target <- as.numeric(public_data_submit_revisions$filtered.spike_target)
+
+public_data_submit_revisions <- public_data_submit_revisions %>%
+  group_by(Author) %>%
+  drop_na(filtered.spike_target) %>%
+  mutate(inputvar = (filtered.spike_target)/min(filtered.spike_target)) %>%
+  mutate(meanvar = mean(inputvar))
+```
+
+```{r, eval = FALSE}
+public_data_submit_revisions <- public_data_submit_revisions %>%
+  arrange(meanvar) %>%
+  group_by(Author = factor(Author, levels = unique(Author))) %>%
+  mutate(group = cur_group_id())
+```
+
+```{r, eval = FALSE}
+public_data_submit_revisions %>% 
+  drop_na(inputvar) %>% group_by(Author) %>%
+  arrange(meanvar) %>%
+  ggplot() + 
+  aes(x = as.factor(group), y = inputvar) + 
+  geom_jitter(size = 4, alpha = 0.5, width = 0.2) + 
+  geom_hline(yintercept = 1) + 
+  labs(title = "Variation in input spike-in/target chromatin ratios", 
+       y = "input/target", x = "Dataset") + 
+  theme(legend.position = "none")
+```
+```{r, fig.width = 9, fig.height = 4, eval = FALSE}
+library(ggforce)
+public_data_submit_revisions %>% 
+  drop_na(filtered.spike_target) %>% ggplot() + 
+  aes(x = as.factor(group), y = inputvar) + 
+  geom_jitter(size = 6, alpha = 0.6, width = 0.1) + 
+  geom_hline(yintercept = 1) + 
+  labs(title = "Variation in input spike-in/target chromatin ratios", y = "Relative ratio of inputs within a dataset", 
+       x = "Dataset") + 
+  facet_zoom(ylim = c(0.7, 2.5))
+```
+
+Better way: break plot with facets into 1-19, then 20-23, and scale axes
+
+1) can get break in rows, while scaling equally
+  - scales = "free_x" removes the empty entries in each facet
+  - space = "free" scales each facet by the range of x values, keeps them proportional
+```{r, eval = FALSE}
+library(ggh4x)
+library(RColorBrewer)
+
+public_data_submit_revisions %>% 
+  drop_na(inputvar) %>% ggplot() + 
+  aes(x = as.factor(group), y = inputvar) + 
+  geom_jitter(size = 3.5, alpha = 0.6, width = 0.17, color = "navy", pch=21, fill = "dodgerblue2", stroke = 1.5) + 
+  geom_hline(yintercept = 1) + 
+  labs(title = "Variation in input spike-in/target chromatin ratios", 
+       y = "Relative ratio of inputs within a dataset",
+       x = "Dataset") + 
+  ggh4x::facet_grid2(~ group > 26, scales = "free", independent = "y", space = "free") +
+   scale_color_manual(
+      values = colorRampPalette(brewer.pal(9, "YlGnBu"))(13)[1:13])
+```
+
+## Positioning 
+
+### Scatterplot positioning
+
+Default
+```{r, fig.width=4, fig.height=3}
+ggplot(iris) + 
+  aes(Sepal.Length, Sepal.Width, color = Species) +
+  geom_point()
+```
+
+Jitter
+```{r, fig.width=4, fig.height=3}
+ggplot(iris) +
+  aes(Sepal.Length, Sepal.Width, color = Species) + 
+  geom_jitter()
+```
+
+Or
+```{r, fig.width=4, fig.height=3}
+ggplot(iris) + 
+  aes(Sepal.Length, Sepal.Width, color = Species) + 
+  geom_point(position= "jitter")
+```
+
+### Legend positioning
+
+Use `legend.position = c([HORIZONTAL], [VERTICAL])` where 
+
+1. [HORIZONTAL] = integer from (0, 1), 0 left, 1 right
+2. [VERTICAL] = integer from (0, 1), 0 bottom, 1 top
+
+```{r, fig.width=4.5, fig.height=4}
+ggplot(iris) + 
+  aes(Sepal.Length, Sepal.Width, color = Species) +
+  geom_point() + 
+  coord_cartesian(ylim = c(2,5)) + 
+  theme(legend.position = c(0.85, 0.83))
+```
+
+Add border to legend if inside graph to reduce chance of misinterpretation: 
+
+```{r, fig.width=4.5, fig.height=4}
+ggplot(iris) + 
+  aes(Sepal.Length, Sepal.Width, color = Species) +
+  geom_point() + 
+  coord_cartesian(ylim = c(2,5)) + 
+  theme(legend.position = c(0.85, 0.83), 
+                            legend.background = element_rect(
+                                    linewidth=0.7, linetype="solid", 
+                                    colour ="grey20"))
+```
+
+
+## Plot on log scale
+
+Plot_type + scale_x_log10() + scale_y_log10()
+
+```{r, fig.width=4, fig.height=3}
+ggplot(iris) + 
+  aes(Sepal.Length, Sepal.Width, color = Species) + 
+  geom_point(position= "jitter") + 
+  scale_x_log10() + scale_y_log10()
+```
+
+
+## Set x and y axes
+
+### Strategy 1: Scale_x_continuous
+
+Remove points outside the viewing window (will affect regression lines, etc)
+
+`plot + scale_x_continuous(limits = c(xmin, xmax)) + scale_y_continuous(limits = c(ymin, ymax))`
+
+```{r, fig.width=4, fig.height=3}
+ggplot(iris) +
+  aes(Sepal.Length, Sepal.Width, group = Species, color = Species) +
+  geom_point(position= "jitter") + 
+  scale_x_continuous(limits = c(4, 7)) + 
+  scale_y_continuous(limits = c(1, 5))
+```
+
+### Strategy 2: coord_cartesian
+
+Set viewing window without removing points that may fall outside (they just won’t be visible)
+
+`plot + coord_cartesian(xlim=c(xmin, xmax), ylim=c(ymin, ymax))`
+
+```{r, fig.width=4, fig.height=3}
+ggplot(iris) + 
+  aes(Sepal.Length, Sepal.Width, group = Species, color = Species) + 
+  geom_point(position= "jitter") + 
+  coord_cartesian(xlim = c(4, 7), ylim = c(1, 5))
+```
+
+## Add regression line
+
+`Plot_object + geom_smooth(method=lm)`
+
+For multiple regression lines by group, set `group = Species` within `aes()`
+
+```{r, fig.width=4, fig.height=3}
+ggplot(iris) + 
+  aes(Sepal.Length, Sepal.Width, group = Species, color = Species) + 
+  geom_point(position= "jitter") + 
+  geom_smooth(method = lm, fill = NA)
+```
+
+## Add x = y line
+
+`Plot_object + geom_abline()`
+
+## Manual tick lines
+
+`plot_object + scale_y_continuous(breaks=seq(ymin, ymax, interval))`
+
+
+# Coloring
+
+## `Viridis` Colorblind-friendly library
+
+Add with `library(viridis)` 
+```{r}
+library(viridis)
+```
+
+### Continuous Color Schemes
+```{r, echo = FALSE, eval = FALSE}
+knitr::include_graphics("C:\\Users\\lhodg\\Documents\\Research\\R_for_fun\\data_vis\\viridis_continuous.png")
+```
+
+Plotting for continuous variables
+```{r, eval = FALSE}
+smoker_insurance + 
+  geom_jitter(aes(color = bmi)) + 
+  facet_grid(cols = vars(region), rows = vars(sex)) + 
+  scale_color_viridis(option = "magma")
+```
+
+### Discrete Color Schemes
+```{r, eval = FALSE, eval = FALSE}
+knitr::include_graphics("C:\\Users\\lhodg\\Documents\\Research\\R_for_fun\\data_vis\\viridis_discrete.png")
+```
+
+Plotting for Discrete color schemes, make sure to set `discrete = TRUE`
+```{r, fig.width=4, fig.height=3, eval = FALSE}
+ggplot(data = acadia) + 
+  aes(x = Category, y = Abundance, color = Abundance) + 
+  geom_count() + 
+  labs(title = "Abundance of Biodiversity in Acadia National Park") +
+  scale_color_viridis(option = "magma", discrete = TRUE)
+```
+
+## R Color Brewer
+
+```{r, echo = FALSE,  fig.width=6.5, fig.height=8}
+library(RColorBrewer)
+display.brewer.all()
+```
+
+Get hex codes from the color schemes: 
+
+```{r}
+
+brewer.pal(n=5,"Set1")
+```
+
+Extend colors (if you need more colors, or want to exclude upper/lower colors) 
+
+```{r}
+colorRampPalette(brewer.pal(9, "YlGnBu"))(12)[4:11]
+```
+```{r, fig.width=6.5, fig.height=5, eval = FALSE}
+ggplot(data = acadia) + 
+  aes(x = Category, y = Abundance, color = Abundance) + 
+  geom_count() + 
+  labs(title = "Abundance of Biodiversity in Acadia National Park") +
+  scale_color_manual(
+      values = colorRampPalette(brewer.pal(9, "YlGnBu"))(10)[3:9],
+      name = "Abundance")
+```
+
+## non Rcolorbrewer palettes
+
+```{r, fig.width = 6, fig.height = 8}
+library(grDevices) # library for color palettes
+library(unikn) # library needed for plot below
+
+n <- 10
+
+h1 <- hcl.colors(n, palette = "Dynamic")
+h2 <- hcl.colors(n, palette = "Earth")
+h3 <- hcl.colors(n, palette = "Terrain")
+h4 <- hcl.colors(n, palette = "Berlin")
+h5 <- hcl.colors(n, palette = "Oslo")
+h6 <- hcl.colors(n, palette = "Lajolla")
+h7 <- hcl.colors(n, palette = "Cork")
+h8 <- hcl.colors(n, palette = "Vik")
+h9 <- hcl.colors(n, palette = "Fall")
+h10 <- hcl.colors(n, palette = "Sunset")
+h11 <- hcl.colors(n, palette = "Purple-Orange")
+h12 <- hcl.colors(n, palette = "Dark-Mint")
+h13 <- hcl.colors(n, palette = "Peach")
+h15 <- hcl.colors(n, palette = "Roma")
+
+seecol(list(h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, h11, h12, h13, h15), 
+       col_brd = "white", lwd_brd = 4, 
+       title = "hcl.colors NOT in RColorBrewer (n = 10)", 
+       pal_names = c("Dynamic", "Earth", "Terrain", "Berlin", "Oslo", "Lajolla", "Cork", "Vik", "Fall", "Sunset", "Purple-Orange", "Dark-Mint", "Peach", "Roma"))
+```
+
+See all hcl palettes: 
+
+```{r, fig.width = 8, fig.height = 6}
+hcl.pals()
+
+hcl.swatch <- function(type = NULL, n = 5, nrow = 11,
+  border = if (n < 15) "black" else NA) {
+    palette <- hcl.pals(type)
+    cols <- sapply(palette, hcl.colors, n = n)
+    ncol <- ncol(cols)
+    nswatch <- min(ncol, nrow)
+
+    par(mar = rep(0.1, 4),
+        mfrow = c(1, min(5, ceiling(ncol/nrow))),
+        pin = c(1, 0.5 * nswatch),
+        cex = 0.7)
+
+    while (length(palette)) {
+        subset <- 1:min(nrow, ncol(cols))
+        plot.new()
+        plot.window(c(0, n), c(0, nrow + 1))
+        text(0, rev(subset) + 0.1, palette[subset], adj = c(0, 0))
+        y <- rep(subset, each = n)
+        rect(rep(0:(n-1), n), rev(y), rep(1:n, n), rev(y) - 0.5,
+             col = cols[, subset], border = border)
+        palette <- palette[-subset]
+        cols <- cols[, -subset, drop = FALSE]
+    }
+
+    par(mfrow = c(1, 1), mar = c(5.1, 4.1, 4.1, 2.1), cex = 1)
+}
+hcl.swatch("qualitative")
+```
+```{r, fig.width = 5, fig.height = 6}
+hcl.swatch("sequential")
+```
+```{r, fig.width = 5, fig.height = 6}
+hcl.swatch("diverging")
+```
+
+```{r, fig.width = 5, fig.height = 6}
+hcl.swatch("divergingx")
+```
+
+## Manual Color Scheme and Labeling
+```{r, fig.width=4, fig.height=3}
+# Define your palette of choice
+iris_palette <- c(setosa = "slateblue", versicolor = "seagreen", virginica = "orchid")
+
+# Plot using your palette, the first argument in scale_fill_manual is the legend title
+ggplot(iris, aes(Petal.Width, fill = Species)) +
+  geom_bar() +
+  labs(x = "Species", y = "Count") +
+  scale_fill_manual("Species", values = iris_palette)
+```
+
+# Labels
+
+All Font Sizes
+Any ## indicates numerical input, XX indicates text input
+
+> `Plot_object + theme(axis.text.x = element_text(size=##), axis.text.y = element_text(size=##), axis.title = element_text(size=##), etc.)`
+
+Options for text size changing:
+
+1. axis.text.x
+2. axis.text.y
+3. strip.text.x : text in facet labels
+
+## custom legend labels
+
+For line/dot plots: `scale_color_discrete` or `scale_color_manual`
+
+> `scale_color_discrete(name = "Legend Title", labels = c("label1", "label2", "label3", "75%","95%", "100%"))`
+
+Example
+
+```{r, fig.width=4, fig.height=3}
+ggplot(iris) +
+  aes(Sepal.Length, Sepal.Width, group = Species, color = Species) +
+  geom_point() + 
+  scale_color_manual(
+    name = "Species", 
+    labels = c("Setosa", "Versicolor", "Virginica"), 
+    values = c("slateblue", "seagreen", "orchid")
+  )
+```
+
+
+For bar/violin/similar: `scale_fill_discrete`
+
+## rotate labels
+
+> `Plot_object + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))`
+
+## Format Date Labels
+
+Standard date format: `yyyy-mm-dd`
+
+Make a time series dataset:
+
+```{r}
+set.seed(1234)
+last_month <- Sys.Date() - 0:29
+df <- data.frame(
+  date = last_month,
+  price = runif(30)
+)
+```
+
+Plot: 
+```{r, fig.width = 4, fig.height = 3}
+ggplot(data=df, aes(x = date, y = price)) +
+  geom_line()
+```
+
+Format dates: 
+
+- Weekday name: use %a and %A for abbreviated and full weekday name, respectively
+- Month name: use %b and %B for abbreviated and full month name, respectively
+- %d: day of the month as decimal number
+- %U: week of the year as decimal number (00-53)
+- %Y: Year with century
+
+```{r, fig.width = 4, fig.height = 3}
+ggplot(data=df, aes(x = date, y = price)) +
+  geom_line() + 
+  scale_x_date(date_labels = "%b/%d")
+```
+
+```{r, fig.width = 4, fig.height = 3}
+ggplot(data=df, aes(x = date, y = price)) +
+  geom_line() + scale_x_date(date_labels = "%U")
+```
+
+## format axes numbers
+
+### sci notation -> full numbers
+
+```{r}
+options(scipen = 999)
+library(gapminder)
+ggplot(data = gapminder %>% filter(year == 2007) %>% arrange(-pop) %>% top_n(10, wt = pop)) + 
+  aes(x = country, y = pop) + 
+  geom_bar(stat = "identity")
+```
+### full numbers -> Add commas
+
+`scale_y_continuous(labels = scales::comma)`
+
+```{r}
+ggplot(data = gapminder %>% filter(year == 2007) %>% arrange(-pop) %>% top_n(10, wt = pop)) + 
+  aes(x = country, y = pop) + 
+  geom_bar(stat = "identity") +
+  scale_y_continuous(labels = scales::comma)
+```
+
+### Full numbers -> Millions or Billions
+
+`labels = scales::label_number_si()`
+
+```{r, eval = FALSE}
+ggplot(data = gapminder %>% filter(year == 2007) %>% arrange(-pop) %>% top_n(10, wt = pop)) + 
+  aes(x = country, y = pop) + 
+  geom_bar(stat = "identity") +
+  scale_y_continuous(labels = scales::label_number(scale_cut == cut_number()))
+```
+
+## Linebreak in plot labels
+
+`title = "text here \ntext here"`
+
+```{r, fig.width=4, fig.height=3, eval = FALSE}
+acadia <- filter(species_clean, Park_Name == "Acadia")
+ggplot(data = acadia) + 
+  aes(x = Category, y = Abundance, color = Abundance) + 
+  geom_count() + 
+  labs(title = "Abundance of Biodiversity in \nAcadia National Park")
+```
+
+
+# Combining plots
+
+## GridExtra - Gridarrange
+
+```{r}
+library(gridExtra)
+```
+
+Some dummy plots
+
+```{r}
+p1 <- ggplot(data=iris) + 
+  aes(x=Sepal.Width, fill=Species) + 
+  geom_density(stat="density", alpha=I(0.2)) + 
+  xlab("Sepal Width") + ylab("Density") + 
+  ggtitle("Histogram & Density Curve of Sepal Width")
+  
+p2 <- ggplot(data, aes(x=x, y=y) ) +
+  geom_bin2d(bins = 70) +
+  scale_fill_continuous(type = "viridis") +
+  theme_bw()
+  
+p3 <- plt_mpg_vs_wt +
+  geom_text(aes(label = mtcars$cyl)) + 
+  labs(title = "MPG vs weight for Cars")
+
+p4 <- ggplot(data = diamonds) + 
+  aes(x=cut, y=price, fill = cut) +
+  geom_violin() + 
+  theme(legend.position = "none")
+  
+
+p5 <- ggplot(iris) +  
+  aes(Sepal.Length, Sepal.Width, color = Species) + 
+  geom_jitter()
+  
+```
+
+Combine with `grid.arrange`
+
+```{r, fig.height = 7, fig.width = 8}
+# make a matrix of the layout - NA's are empty placeholders, each vector makes a row
+lay <- rbind(c(1, NA, NA),
+             c(2, 3, NA), 
+             c(4, 5, NA))
+
+# gridarrange takes the plots (in order of the layout matrix) then the layout matrix
+# can also set custom widths/heights for each row if you want
+grid.arrange(p1, p2, p3, p4, p5,
+  layout_matrix = lay, 
+  widths = c(5,6,5))
+```
+

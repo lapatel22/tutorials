@@ -1,0 +1,426 @@
+---
+title: "R_tidyverse_cheatsheet"
+format:
+  html:
+    embed-resources: true
+code-overflow: wrap
+toc: true
+---
+
+```{r}
+library(gapminder)
+library(tidyverse)
+```
+
+# `grep()` and `grepl()`
+
+**`grep()`** returns indices of matched items
+
+In the below code we are searching for:
+
+1. the string "bania" (only 1 partial match, Albania)
+2. within the gapminder dataset
+3. within this dataset, the country column
+
+```{r}
+grep("bania", gapminder$country)
+```
+
+**`grepl()`** is very similar, but instead of returining indices of the matches location, it returns a logical vector, with TRUE representing a match, and FALSE if not a match. Importantly, this will always return a vector equal to the length of the searched column
+
+The same example with grepl:
+```{r}
+length(grepl("bania", gapminder$country))
+```
+
+## Search and return row of dataframe
+
+Syntax: `dataframe[grep("string", dataframe$column), ]`
+
+Use indexes to return row with match: works with `grep` and `grepl`
+
+```{r}
+gapminder[grep("bania", gapminder$country), ] %>% knitr::kable()
+```
+
+## Multiple matches with logical operators
+
+"bania" will only match "Albania", but "geria" will match "Nigeria" and "Algeria"
+
+```{r}
+gapminder[grep("bania|geria", gapminder$country), ] %>% knitr::kable()
+```
+
+# `select()` to grab whole columns
+
+## `select()` with exact match
+
+```{r}
+gapminder_select <- gapminder %>% 
+  # pick two years in dataset
+  filter(year %in% c(1952, 2007)) %>%
+  # only countries in Asia
+  filter(continent %in% c("Asia")) %>%
+  # select certain columns
+  select(country,year,lifeExp, gdpPercap) 
+knitr::kable(head(gapminder_select))
+```
+
+## `select()` with partial match
+
+Syntax: `select(dataframe, logical_expression)`
+
+- dataframe can be piped in as shown below or defined explicityly
+
+logical expressions: `dplyr` has lots of helpful functions for string matching. Examples:
+
+- `starts_with()`
+- `ends_with()`
+- `contains()`
+- `matches()`: works with regular expressions (above functions do not)
+
+Each example below would usually select entire columns that match the logical operator, but I only show 6 rows here (with head())
+
+```{r}
+gapminder %>% select(., ends_with("p")) %>% 
+  head() %>% knitr::kable()
+```
+
+```{r}
+gapminder %>% select(., contains("nt")) %>%
+  head() %>% knitr::kable()
+```
+
+```{r}
+gapminder %>% select(., starts_with("co")) %>% 
+  head() %>% knitr::kable()
+```
+
+## select columns that match multiple arguments
+
+Select OR `|` operator
+```{r}
+gapminder %>% select(., matches('co') | matches('try')) %>% head() %>% knitr::kable()
+```
+
+Select AND `&` operator
+```{r}
+gapminder %>% select(., matches('co') & matches('try')) %>% head() %>% knitr::kable()
+```
+
+
+# select entries in rows
+
+## reverse select rows 
+
+```{r}
+gapminder_select <-
+  gapminder[!grepl("19", gapminder$year), ]
+
+knitr::kable(head(gapminder_select))
+```
+
+# `filter()`
+
+## filter to select one instance within column 
+
+1. only keep data from years 1952 and 2007 in column "Year"
+2. data from Asia in the column "Continent" 
+
+```{r}
+gapminder %>% 
+  filter(year %in% c(1952, 2007)) %>% 
+  filter(continent == "Asia") %>% 
+  head() %>% knitr::kable()
+```
+
+## filter based on math/other logicals
+
+```{r}
+gapminder %>%
+  filter(lifeExp > 80) %>%
+  knitr::kable()
+```
+
+## filter/grepl to get a partial match
+
+`filter()` works with multiple logical operators, including `grepl()`. The format is `filter(grepl("string", column_to_search))`. The string to match can be a normal string or some combination with regex. For example, below uses a string `^A` which indicates the string must start with capital A.
+
+```{r}
+gapminder %>% 
+  filter(year %in% c(1952, 2007)) %>% 
+  filter(grepl("^A", continent)) %>% 
+  head() %>% knitr::kable()
+```
+
+## `filter()` reverse of selection
+
+%>% filter(!Annotation %in% c("Intergenic", "intron"))
+
+## `filter()` based on numeric data in columns
+
+Remove rows with zeros in *at least* one of three columns: 
+
+```{r, eval = FALSE}
+counts_BRD4_HA_nozeros <- counts_BRD4_HA_tidy %>% 
+  filter(HA_avg_5 != 0) %>% 
+  filter(BRD4_avg_5 != 0) %>%
+  filter(HA_avg_2.5 != 0) 
+```
+
+Remove rows with zeros in *all* columns selected
+
+```{r, eval = FALSE}
+counts_BRD4_HA_nozeros <- counts_BRD4_HA_tidy %>%
+  rowwise() %>%
+  filter(sum(c(HA_avg_5, BRD4_avg_5, HA_avg_2.5)) != 0)
+```
+
+## Filter multiple matches
+
+```{r, eval = FALSE}
+ LP88_LP91_seqstats %>%
+  filter(grepl(".comb", ID) | grepl("hr_1", ID))
+
+# OR
+LP88_LP91_seqstats %>%
+  filter(grepl(".comb|hr_1", ID))
+```
+
+# `mutate()`
+
+# Tidy(Long) formatted Data
+
+Tidy format: Instead of multiple columns with different variables, data is stored with one column recording each instance of a variable, and a second column recording all values. Helpful to group variables that all use the same measurement/metrics.
+
+Before example with the iris dataset: 
+```{r}
+knitr::kable(head(iris))
+```
+
+`pivot_longer()` requires a few arguments:
+
+- cols: the columns to transform/combine
+- names_to: the names from each column (variables) will all be moved to entries of one column, with the specified name
+- values_to: all values within the input columns are stored in this output column
+
+## Select columns by name
+
+```{r}
+iris %>% 
+    pivot_longer(cols = c("Sepal.Length", "Sepal.Width"), 
+                 names_to = "Sepal_Measures", 
+                 values_to = "Values") %>%
+  head() %>% knitr::kable()
+```
+
+## Select "everything but" columns
+
+Below pivots every column except for the Species column (as this column is a different class than the rest). 
+
+```{r}
+iris %>% 
+    pivot_longer(cols = !Species, 
+                 names_to = "All_Measures", 
+                 values_to = "Values") %>%
+  head() %>% knitr::kable()
+```
+
+## Select columns using tidy helper functions
+
+See select() with partial match to see helper functions.
+
+```{r}
+iris %>% 
+    pivot_longer(cols = starts_with("Petal"), 
+                 names_to = "Petal_Measures", 
+                 values_to = "Values") %>%
+  head() %>% knitr::kable()
+```
+
+## pivot and separate column into multiple
+
+
+
+```{r}
+
+```
+
+
+# Add column to number groups
+
+```{r}
+country_num <- gapminder %>% 
+    group_by(country) %>% 
+    group_indices(., country)
+
+gapmindernew <- gapminder
+
+gapmindernew$country_num <- as.factor(country_num)
+
+knitr::kable(head(gapmindernew))
+```
+
+# Change column names 
+
+Goal: Replace any slashes "/" with _ in column names using `rename_with` (from tidyverse). I do this because the slashes being a special character could cause issues later.
+
+Code: `rename_with(~ gsub("/", "_", .x), contains("/"))`
+
+# Change names within columns
+
+## Change data in specific column by name
+
+Example changed the sample names to remove the experiment number at the beginning, as ggplot can't take a number at the beginning of a variable.
+
+```{r, eval = FALSE}
+seqstats_LP69_expanded$id <- gsub("69", "", as.character(seqstats_LP69_expanded$id))
+knitr::kable(head(seqstats_LP69_expanded))
+```
+
+# Split verbose column into multiple with `separate_wider_regex()`
+
+Using `separate_wider_regex()` from tidyr package, info here: https://tidyr.tidyverse.org/reference/separate_wider_delim.html
+
+Syntax: 
+
+```{r}
+#| eval = FALSE
+
+dataframe %>% separate_wider_regex(
+  cols = columntosplit, 
+  patterns = c(
+    newcol1 = "regex",
+    "regex", #if you want to discard anything between columns
+    newcol2 = "regex"
+  ))
+
+```
+
+Regex: 
+
+- `^` = anchor beginning of string
+- `$` = anchor end of the string
+- `.` = matches any character but newline
+- `[[:alpha:]]` = letters
+- `[[:digit:]]` = digits
+- `[[:alnum:]]` = letters and numbers
+- `[[:graph:]]` = any character but not white space/blank
+
+Special: `+` goes after a match, means it can be counted more than once! Useful instead of denoting `[:digit:][:digit:]` for a two digit number
+
+# groups
+
+`group_by()` groups dataframe rows by values in a specified column. Doesn't otherwise change the dataframe, but you will see how many groups there are in the printed tibble. 
+
+```{r}
+gapminder |> 
+  group_by(year) |> 
+  head()
+```
+## apply `slice_` functions to groups
+
+Extract specific rows from each group: 
+
+1. `slice_head()` gives you the first entry from each group:
+
+```{r}
+gapminder |> 
+  group_by(year) |> 
+  slice_head(n = 1) 
+```
+
+2. `slice_tail()` gives you the last entry from each group (in original df order)
+
+```{r}
+gapminder |> 
+  group_by(year) |> 
+  slice_tail(n = 1) 
+```
+
+3. `slice_min(column, n = 1)` gives you the minimum value of the column specified (must by numeric) for each group
+
+```{r}
+gapminder |> 
+  group_by(year) |> 
+  slice_min(pop, n = 1)
+```
+
+4. `slice_max(column, n = 1)` takes max value of column specified
+
+```{r}
+gapminder |> 
+  group_by(year) |> 
+  slice_max(pop, n = 1)
+```
+
+
+## apply function to each group with `group_map()`
+
+### Function to calculate variation in inputs within each paper
+```{r}
+get_variation_gdpPercap <- function(df, .df) {
+   dfnew <- df                                # copy input df
+   minGdp <- min(df$gdpPercap, na.rm = T)  # get minimum value
+   var <- as.numeric((df$gdpPercap)/minGdp)  # make var column
+   dfnew %>%
+     mutate(var = var)                          # add to df
+}
+```
+
+```{r}
+# grouping df 
+gapminder_varstats <- gapminder %>% 
+  #filter(Mark == "input") %>%      # only inputs
+  group_by(country) %>%             # need to group by paper
+  group_map(get_variation_gdpPercap, .keep = TRUE) %>% # keep group variable
+  bind_rows()
+```
+
+```{r}
+ggplot(gapminder_varstats) + 
+  aes(x = continent, y = var, color = continent) +
+  geom_point(position = "jitter", alpha = 0.7) + 
+  labs(title = "Variation in GDPpercap by country over time", 
+       x = "Continent", y = "GDPpercap relative to country minimum")
+```
+
+Which country had the highest variation?
+
+```{r}
+max_gdpvar <- max(gapminder_varstats$var)
+
+gapminder_varstats[grep(max_gdpvar, gapminder_varstats$var), ]
+```
+
+# change column order
+
+```{r, eval = FALSE}
+data_new$group <- factor(data_new$group,levels = c("B", "A", "C", "D"))
+```
+
+# String manipulation
+
+## `str_remove` to remove part of a string
+
+```{r}
+library(gapminder)
+str_remove(gapminder$country, "stan") %>% head()
+```
+
+Remove multiple parts of strings:
+
+```{r, eval = FALSE}
+str_remove_all(Sample, "H3K27ac_|\\.Coverage")
+```
+
+## `str_match` to keep part of a string based on regex pattern
+
+```{r, eval = FALSE}
+str_match(Sample, '([^_]+)(?:_[^_]+){3}$')[,2]
+```
+
+
+## `str_extract` to keep part of a string
+
+
