@@ -84,7 +84,7 @@ Titration of mitotic/interphase HeLa-S3 cells: from our preprint
 [here](https://pubmed.ncbi.nlm.nih.gov/41394721/)
 
 ![H3K9ac titration
-dataset](%22/Users/laurenpatel/Documents/Research/H3K9ac_titration_dataset_example.png%22)
+dataset](%22GGplot_quarto_files/H3K9ac_titration_dataset_example.png%22)
 
 ``` r
 knitr::include_graphics("/Users/laurenpatel/Documents/Research/H3K9ac_titration_dataset_example.png")
@@ -1068,7 +1068,7 @@ library(unikn) # library needed for plot below
 
     Welcome to unikn (v1.0.0)!
 
-    unikn.guide() opens user guides.
+    shades_of() creates color gradients.
 
 ``` r
 n <- 10

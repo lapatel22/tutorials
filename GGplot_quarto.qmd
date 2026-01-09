@@ -18,7 +18,7 @@ theme_set(theme_classic())
 
 Titration of mitotic/interphase HeLa-S3 cells: from our preprint [here](https://pubmed.ncbi.nlm.nih.gov/41394721/)
 
-![H3K9ac titration dataset]("/Users/laurenpatel/Documents/Research/H3K9ac_titration_dataset_example.png") 
+![H3K9ac titration dataset]("GGplot_quarto_files/H3K9ac_titration_dataset_example.png") 
 
 ```{r}
 knitr::include_graphics("/Users/laurenpatel/Documents/Research/H3K9ac_titration_dataset_example.png")
