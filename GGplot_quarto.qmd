@@ -11,8 +11,19 @@ knitr::opts_chunk$set(echo = TRUE)
 
 library(readxl)
 library(tidyverse)
-theme_set(theme_bw())
+theme_set(theme_classic())
 ```
+
+# Example dataset
+
+Titration of mitotic/interphase HeLa-S3 cells: from our preprint [here](https://pubmed.ncbi.nlm.nih.gov/41394721/)
+
+![H3K9ac titration dataset]("/Users/laurenpatel/Documents/Research/H3K9ac_titration_dataset_example.png") 
+
+```{r}
+knitr::include_graphics("/Users/laurenpatel/Documents/Research/H3K9ac_titration_dataset_example.png")
+```
+
 
 # Importing Data
 
@@ -23,7 +34,23 @@ theme_set(theme_bw())
 ```
 
 ## From csv/tsv
-Use read.table function: first argument specify path to file, sep argument tells R what separates the columns of your data (space, comma, or tab). Example below is for tab separated TSV. header = T (header = True) means the first row is the headers for columns. 
+
+`read.delim()`
+
+Our example dataset is generated with HOMER `annotatePeaks`, quantifying H3K9ac ChIP-seq signal at RefSeq TSSs. 
+
+```{r}
+hist_tss_hg38_tutorial_spikenorm_LP78 <- read.delim("~/Documents/Research/LP_78/hist_tss_hg38_LP78_readnorm_vs_spikenorm.txt")
+```
+
+Before cleaning, the headers are messy, and contain the original function used to make the file:
+
+```{r}
+knitr::kable(head(hist_tss_hg38_tutorial_spikenorm_LP78))
+```
+
+
+Use `read.table` function: first argument specify path to file, sep argument tells R what separates the columns of your data (space, comma, or tab). Example below is for tab separated TSV. header = T (header = True) means the first row is the headers for columns. 
 
 ```{r, eval = FALSE} 
 RGFP_input_tagLen <- read.table("~/Research/LH_57_csRNA/Hela_sync_RGFP_input/tagLengthDistribution.txt", 
@@ -48,6 +75,24 @@ Below example replaces "_synchela_" with "_"
 #dataframe %>% rename_with(~ gsub("_synchela_", "_", .x), contains("_synchela"))
 ```
 
+## Example dataset: 
+
+```{r}
+# fix the name of column 1, removing the record of the command used to make the file
+colnames(hist_tss_hg38_tutorial_spikenorm_LP78)[1] <- "Distance_from_tss"
+
+hist_tss_hg38_tutorial_spikenorm_LP78 <- hist_tss_hg38_tutorial_spikenorm_LP78 %>% 
+      ### first rename_with uses are specific to my sample name
+      # get rid of any prefix before cell type (ex: directory path)
+    rename_with(~ gsub(".GCcheck.tagdir", ".readnorm.tagdir", .x), contains("Hela")) %>% 
+    rename_with(~ gsub(".+Hela", "Hela", .x), contains("Hela")) %>% 
+      ### below two uses of rename_with are general to HOMER output
+    rename_with(~ gsub("\\.[[:digit:]]$", "_minus", .x), contains("Tags")) %>% 
+    rename_with(~ gsub("\\.\\.\\.", "_", .x), contains("Tags"))
+
+knitr::kable(head(hist_tss_hg38_tutorial_spikenorm_LP78))    
+```
+
 ## TidyR
 
 ### `gather()` (outdated, use pivot_longer now!)
@@ -63,18 +108,41 @@ LH51_hg38only_phredtrim_mapq_tidy <- LH51_phredtrim_hg38_MAPQscores %>% gather(S
 
 ### `pivot_longer()`
 
-```{r, eval = FALSE}
-counts_megapeaks_hg38_LH56_tidy <- counts_megapeaks_hg38_LH56_clean %>% 
-  select(PeakID, contains("Tag")) %>%    
-  pivot_longer(
-      cols = !PeakID,           # pivot all cols except PeakID
-      names_to = "Sample",      # sample names become factor col
-      values_to = "Peak_Tags")  # all values in new col
+```{r}
+# select Coverage columns and Distance_from_tss only
+hist_tss_hg38_tutorial_spikenorm_LP78_cov <- 
+  hist_tss_hg38_tutorial_spikenorm_LP78 %>% select(contains("Coverage"))
+
+hist_tss_hg38_tutorial_spikenorm_LP78_cov$Distance_from_tss <- 
+      hist_tss_hg38_tutorial_spikenorm_LP78$Distance_from_tss
+
+# tidy format
+hist_tss_hg38_tutorial_spikenorm_LP78_long <- 
+    hist_tss_hg38_tutorial_spikenorm_LP78_cov %>% pivot_longer(
+      cols = -"Distance_from_tss", 
+      names_to = "Sample", 
+      values_to = "Coverage")
+
+knitr::kable(head(hist_tss_hg38_tutorial_spikenorm_LP78_long))
+```
+
+```{r}
+hist_tss_hg38_tutorial_spikenorm_LP78_long <- hist_tss_hg38_tutorial_spikenorm_LP78_long %>%
+  mutate(
+    cell = str_match(Sample, '([^_]+)(?:_[^_]+){5}$')[,2],
+    treatment = str_match(Sample, '([^_]+)(?:_[^_]+){4}$')[,2],
+    timepoint = str_remove(str_match(Sample, '([^_]+)(?:_[^_]+){3}$')[,2], "TSA"),
+    biorep = str_match(Sample, '([^_]+)(?:_[^_]+){2}$')[,2],
+    antibody = str_match(Sample, '([^_]+)(?:_[^_]+){1}$')[,2],
+    techrep = str_match(Sample, '([^_]+)(?:_[^_]+){0}$')[,2]
+  )
 ```
 
 # Base Plots
 
 ## Line
+
+General Formula:
 
 > `Plot_line <- ggplot(data=dataframe, aes(x=xvariable)) + geom_line(aes(y=yvariable1, color= ”name/hexcode”)), + geom_line(aes(y=yvariable2, color= “name/hexcode”)), + geom_line(etc.) + labs (x = “X Axis Label”, y = “Y Axis Label”, title = “Plot title”)`
 
@@ -462,6 +530,7 @@ public_data_submit_revisions %>%
        y = "input/target", x = "Dataset") + 
   theme(legend.position = "none")
 ```
+
 ```{r, fig.width = 9, fig.height = 4, eval = FALSE}
 library(ggforce)
 public_data_submit_revisions %>% 

@@ -1,6 +1,7 @@
 # ggplot_quarto
 
 
+- [Example dataset](#example-dataset)
 - [Importing Data](#importing-data)
   - [From excel](#from-excel)
   - [From csv/tsv](#from-csvtsv)
@@ -8,6 +9,7 @@
 - [Data cleanup](#data-cleanup)
   - [Remove a pattern from a column
     name](#remove-a-pattern-from-a-column-name)
+  - [Example dataset:](#example-dataset-1)
   - [TidyR](#tidyr)
     - [`gather()` (outdated, use pivot_longer
       now!)](#gather-outdated-use-pivot_longer-now)
@@ -76,6 +78,20 @@
 - [Combining plots](#combining-plots)
   - [GridExtra - Gridarrange](#gridextra---gridarrange)
 
+# Example dataset
+
+Titration of mitotic/interphase HeLa-S3 cells: from our preprint
+[here](https://pubmed.ncbi.nlm.nih.gov/41394721/)
+
+![H3K9ac titration
+dataset](%22/Users/laurenpatel/Documents/Research/H3K9ac_titration_dataset_example.png%22)
+
+``` r
+knitr::include_graphics("/Users/laurenpatel/Documents/Research/H3K9ac_titration_dataset_example.png")
+```
+
+![](../../H3K9ac_titration_dataset_example.png)
+
 # Importing Data
 
 ## From excel
@@ -87,7 +103,32 @@
 
 ## From csv/tsv
 
-Use read.table function: first argument specify path to file, sep
+`read.delim()`
+
+Our example dataset is generated with HOMER `annotatePeaks`, quantifying
+H3K9ac ChIP-seq signal at RefSeq TSSs.
+
+``` r
+hist_tss_hg38_tutorial_spikenorm_LP78 <- read.delim("~/Documents/Research/LP_78/hist_tss_hg38_LP78_readnorm_vs_spikenorm.txt")
+```
+
+Before cleaning, the headers are messy, and contain the original
+function used to make the file:
+
+``` r
+knitr::kable(head(hist_tss_hg38_tutorial_spikenorm_LP78))
+```
+
+| Distance.from.Center..cmd.annotatePeaks.pl.tss.hg38..size.4000..hist.25..d.hg38_nodups_tagdirs.HelaS3_100sync_0inter_1_H3K9ac_1.hg38.GCcheck.tagdir.hg38_nodups_tagdirs.HelaS3_100sync_0inter_1_H3K9ac_2.hg38.GCcheck.tagdir.hg38_nodups_tagdirs.HelaS3_100sync_0inter_1_H3K9ac_3.hg38.GCcheck.tagdir.hg38_nodups_tagdirs.HelaS3_100sync_0inter_1_input_1.hg38.GCcheck.tagdir.hg38_nodups_tagdirs.HelaS3_0sync_100inter_1_H3K9ac_1.hg38.GCcheck.tagdir.hg38_nodups_tagdirs.HelaS3_0sync_100inter_1_H3K9ac_2.hg38.GCcheck.tagdir.hg38_nodups_tagdirs.HelaS3_0sync_100inter_1_H3K9ac_3.hg38.GCcheck.tagdir.hg38_nodups_tagdirs.HelaS3_0sync_100inter_1_input_1.hg38.GCcheck.tagdir.hg38_normalized_tagdirs.HelaS3_100sync_0inter_1_H3K9ac_1.fly.normalized.tagdir.hg38_normalized_tagdirs.HelaS3_100sync_0inter_1_H3K9ac_1.normalized.tagdir.hg38_normalized_tagdirs.HelaS3_100sync_0inter_1_H3K9ac_1.yeast.normalized.tagdir.hg38_normalized_tagdirs.HelaS3_100sync_0inter_1_H3K9ac_2.fly.normalized.tagdir.hg38_normalized_tagdirs.HelaS3_100sync_0inter_1_H3K9ac_2.normalized.tagdir.hg38_normalized_tagdirs.HelaS3_100sync_0inter_1_H3K9ac_2.yeast.normalized.tagdir.hg38_normalized_tagdirs.HelaS3_100sync_0inter_1_H3K9ac_3.fly.normalized.tagdir.hg38_normalized_tagdirs.HelaS3_100sync_0inter_1_H3K9ac_3.normalized.tagdir.hg38_normalized_tagdirs.HelaS3_100sync_0inter_1_H3K9ac_3.yeast.normalized.tagdir.hg38_normalized_tagdirs.HelaS3_0sync_100inter_1_H3K9ac_1.fly.normalized.tagdir.hg38_normalized_tagdirs.HelaS3_0sync_100inter_1_H3K9ac_1.normalized.tagdir.hg38_normalized_tagdirs.HelaS3_0sync_100inter_1_H3K9ac_1.yeast.normalized.tagdir.hg38_normalized_tagdirs.HelaS3_0sync_100inter_1_H3K9ac_2.fly.normalized.tagdir.hg38_normalized_tagdirs.HelaS3_0sync_100inter_1_H3K9ac_2.normalized.tagdir.hg38_normalized_tagdirs.HelaS3_0sync_100inter_1_H3K9ac_2.yeast.normalized.tagdir.hg38_normalized_tagdirs.HelaS3_0sync_100inter_1_H3K9ac_3.fly.normalized.tagdir.hg38_normalized_tagdirs.HelaS3_0sync_100inter_1_H3K9ac_3.normalized.tagdir.hg38_normalized_tagdirs.HelaS3_0sync_100inter_1_H3K9ac_3.yeast.normalized.tagdir. | hg38_nodups_tagdirs.HelaS3_100sync_0inter_1_H3K9ac_1.hg38.GCcheck.tagdir.Coverage | hg38_nodups_tagdirs.HelaS3_100sync_0inter_1_H3K9ac_1.hg38.GCcheck.tagdir…Tags | hg38_nodups_tagdirs.HelaS3_100sync_0inter_1_H3K9ac_1.hg38.GCcheck.tagdir…Tags.1 | hg38_nodups_tagdirs.HelaS3_100sync_0inter_1_H3K9ac_2.hg38.GCcheck.tagdir.Coverage | hg38_nodups_tagdirs.HelaS3_100sync_0inter_1_H3K9ac_2.hg38.GCcheck.tagdir…Tags | hg38_nodups_tagdirs.HelaS3_100sync_0inter_1_H3K9ac_2.hg38.GCcheck.tagdir…Tags.1 | hg38_nodups_tagdirs.HelaS3_100sync_0inter_1_H3K9ac_3.hg38.GCcheck.tagdir.Coverage | hg38_nodups_tagdirs.HelaS3_100sync_0inter_1_H3K9ac_3.hg38.GCcheck.tagdir…Tags | hg38_nodups_tagdirs.HelaS3_100sync_0inter_1_H3K9ac_3.hg38.GCcheck.tagdir…Tags.1 | hg38_nodups_tagdirs.HelaS3_100sync_0inter_1_input_1.hg38.GCcheck.tagdir.Coverage | hg38_nodups_tagdirs.HelaS3_100sync_0inter_1_input_1.hg38.GCcheck.tagdir…Tags | hg38_nodups_tagdirs.HelaS3_100sync_0inter_1_input_1.hg38.GCcheck.tagdir…Tags.1 | hg38_nodups_tagdirs.HelaS3_0sync_100inter_1_H3K9ac_1.hg38.GCcheck.tagdir.Coverage | hg38_nodups_tagdirs.HelaS3_0sync_100inter_1_H3K9ac_1.hg38.GCcheck.tagdir…Tags | hg38_nodups_tagdirs.HelaS3_0sync_100inter_1_H3K9ac_1.hg38.GCcheck.tagdir…Tags.1 | hg38_nodups_tagdirs.HelaS3_0sync_100inter_1_H3K9ac_2.hg38.GCcheck.tagdir.Coverage | hg38_nodups_tagdirs.HelaS3_0sync_100inter_1_H3K9ac_2.hg38.GCcheck.tagdir…Tags | hg38_nodups_tagdirs.HelaS3_0sync_100inter_1_H3K9ac_2.hg38.GCcheck.tagdir…Tags.1 | hg38_nodups_tagdirs.HelaS3_0sync_100inter_1_H3K9ac_3.hg38.GCcheck.tagdir.Coverage | hg38_nodups_tagdirs.HelaS3_0sync_100inter_1_H3K9ac_3.hg38.GCcheck.tagdir…Tags | hg38_nodups_tagdirs.HelaS3_0sync_100inter_1_H3K9ac_3.hg38.GCcheck.tagdir…Tags.1 | hg38_nodups_tagdirs.HelaS3_0sync_100inter_1_input_1.hg38.GCcheck.tagdir.Coverage | hg38_nodups_tagdirs.HelaS3_0sync_100inter_1_input_1.hg38.GCcheck.tagdir…Tags | hg38_nodups_tagdirs.HelaS3_0sync_100inter_1_input_1.hg38.GCcheck.tagdir…Tags.1 | hg38_normalized_tagdirs.HelaS3_100sync_0inter_1_H3K9ac_1.fly.normalized.tagdir.Coverage | hg38_normalized_tagdirs.HelaS3_100sync_0inter_1_H3K9ac_1.fly.normalized.tagdir…Tags | hg38_normalized_tagdirs.HelaS3_100sync_0inter_1_H3K9ac_1.fly.normalized.tagdir…Tags.1 | hg38_normalized_tagdirs.HelaS3_100sync_0inter_1_H3K9ac_1.normalized.tagdir.Coverage | hg38_normalized_tagdirs.HelaS3_100sync_0inter_1_H3K9ac_1.normalized.tagdir…Tags | hg38_normalized_tagdirs.HelaS3_100sync_0inter_1_H3K9ac_1.normalized.tagdir…Tags.1 | hg38_normalized_tagdirs.HelaS3_100sync_0inter_1_H3K9ac_1.yeast.normalized.tagdir.Coverage | hg38_normalized_tagdirs.HelaS3_100sync_0inter_1_H3K9ac_1.yeast.normalized.tagdir…Tags | hg38_normalized_tagdirs.HelaS3_100sync_0inter_1_H3K9ac_1.yeast.normalized.tagdir…Tags.1 | hg38_normalized_tagdirs.HelaS3_100sync_0inter_1_H3K9ac_2.fly.normalized.tagdir.Coverage | hg38_normalized_tagdirs.HelaS3_100sync_0inter_1_H3K9ac_2.fly.normalized.tagdir…Tags | hg38_normalized_tagdirs.HelaS3_100sync_0inter_1_H3K9ac_2.fly.normalized.tagdir…Tags.1 | hg38_normalized_tagdirs.HelaS3_100sync_0inter_1_H3K9ac_2.normalized.tagdir.Coverage | hg38_normalized_tagdirs.HelaS3_100sync_0inter_1_H3K9ac_2.normalized.tagdir…Tags | hg38_normalized_tagdirs.HelaS3_100sync_0inter_1_H3K9ac_2.normalized.tagdir…Tags.1 | hg38_normalized_tagdirs.HelaS3_100sync_0inter_1_H3K9ac_2.yeast.normalized.tagdir.Coverage | hg38_normalized_tagdirs.HelaS3_100sync_0inter_1_H3K9ac_2.yeast.normalized.tagdir…Tags | hg38_normalized_tagdirs.HelaS3_100sync_0inter_1_H3K9ac_2.yeast.normalized.tagdir…Tags.1 | hg38_normalized_tagdirs.HelaS3_100sync_0inter_1_H3K9ac_3.fly.normalized.tagdir.Coverage | hg38_normalized_tagdirs.HelaS3_100sync_0inter_1_H3K9ac_3.fly.normalized.tagdir…Tags | hg38_normalized_tagdirs.HelaS3_100sync_0inter_1_H3K9ac_3.fly.normalized.tagdir…Tags.1 | hg38_normalized_tagdirs.HelaS3_100sync_0inter_1_H3K9ac_3.normalized.tagdir.Coverage | hg38_normalized_tagdirs.HelaS3_100sync_0inter_1_H3K9ac_3.normalized.tagdir…Tags | hg38_normalized_tagdirs.HelaS3_100sync_0inter_1_H3K9ac_3.normalized.tagdir…Tags.1 | hg38_normalized_tagdirs.HelaS3_100sync_0inter_1_H3K9ac_3.yeast.normalized.tagdir.Coverage | hg38_normalized_tagdirs.HelaS3_100sync_0inter_1_H3K9ac_3.yeast.normalized.tagdir…Tags | hg38_normalized_tagdirs.HelaS3_100sync_0inter_1_H3K9ac_3.yeast.normalized.tagdir…Tags.1 | hg38_normalized_tagdirs.HelaS3_0sync_100inter_1_H3K9ac_1.fly.normalized.tagdir.Coverage | hg38_normalized_tagdirs.HelaS3_0sync_100inter_1_H3K9ac_1.fly.normalized.tagdir…Tags | hg38_normalized_tagdirs.HelaS3_0sync_100inter_1_H3K9ac_1.fly.normalized.tagdir…Tags.1 | hg38_normalized_tagdirs.HelaS3_0sync_100inter_1_H3K9ac_1.normalized.tagdir.Coverage | hg38_normalized_tagdirs.HelaS3_0sync_100inter_1_H3K9ac_1.normalized.tagdir…Tags | hg38_normalized_tagdirs.HelaS3_0sync_100inter_1_H3K9ac_1.normalized.tagdir…Tags.1 | hg38_normalized_tagdirs.HelaS3_0sync_100inter_1_H3K9ac_1.yeast.normalized.tagdir.Coverage | hg38_normalized_tagdirs.HelaS3_0sync_100inter_1_H3K9ac_1.yeast.normalized.tagdir…Tags | hg38_normalized_tagdirs.HelaS3_0sync_100inter_1_H3K9ac_1.yeast.normalized.tagdir…Tags.1 | hg38_normalized_tagdirs.HelaS3_0sync_100inter_1_H3K9ac_2.fly.normalized.tagdir.Coverage | hg38_normalized_tagdirs.HelaS3_0sync_100inter_1_H3K9ac_2.fly.normalized.tagdir…Tags | hg38_normalized_tagdirs.HelaS3_0sync_100inter_1_H3K9ac_2.fly.normalized.tagdir…Tags.1 | hg38_normalized_tagdirs.HelaS3_0sync_100inter_1_H3K9ac_2.normalized.tagdir.Coverage | hg38_normalized_tagdirs.HelaS3_0sync_100inter_1_H3K9ac_2.normalized.tagdir…Tags | hg38_normalized_tagdirs.HelaS3_0sync_100inter_1_H3K9ac_2.normalized.tagdir…Tags.1 | hg38_normalized_tagdirs.HelaS3_0sync_100inter_1_H3K9ac_2.yeast.normalized.tagdir.Coverage | hg38_normalized_tagdirs.HelaS3_0sync_100inter_1_H3K9ac_2.yeast.normalized.tagdir…Tags | hg38_normalized_tagdirs.HelaS3_0sync_100inter_1_H3K9ac_2.yeast.normalized.tagdir…Tags.1 | hg38_normalized_tagdirs.HelaS3_0sync_100inter_1_H3K9ac_3.fly.normalized.tagdir.Coverage | hg38_normalized_tagdirs.HelaS3_0sync_100inter_1_H3K9ac_3.fly.normalized.tagdir…Tags | hg38_normalized_tagdirs.HelaS3_0sync_100inter_1_H3K9ac_3.fly.normalized.tagdir…Tags.1 | hg38_normalized_tagdirs.HelaS3_0sync_100inter_1_H3K9ac_3.normalized.tagdir.Coverage | hg38_normalized_tagdirs.HelaS3_0sync_100inter_1_H3K9ac_3.normalized.tagdir…Tags | hg38_normalized_tagdirs.HelaS3_0sync_100inter_1_H3K9ac_3.normalized.tagdir…Tags.1 | hg38_normalized_tagdirs.HelaS3_0sync_100inter_1_H3K9ac_3.yeast.normalized.tagdir.Coverage | hg38_normalized_tagdirs.HelaS3_0sync_100inter_1_H3K9ac_3.yeast.normalized.tagdir…Tags | hg38_normalized_tagdirs.HelaS3_0sync_100inter_1_H3K9ac_3.yeast.normalized.tagdir…Tags.1 |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| -2000 | 0.7488139 | 0.0030869 | 0.0031685 | 0.7391999 | 0.0032712 | 0.0031230 | 0.8627247 | 0.0037483 | 0.0037099 | 0.3422466 | 0.0014854 | 0.0014811 | 0.6880715 | 0.0031877 | 0.0028710 | 0.8437267 | 0.0036737 | 0.0035004 | 0.8276442 | 0.0036873 | 0.0034055 | 0.3696493 | 0.0016236 | 0.0015289 | 0.8027825 | 0.0033094 | 0.0033969 | 0.8027825 | 0.0033094 | 0.0033969 | 0.8027825 | 0.0033094 | 0.0033969 | 0.8213333 | 0.0036347 | 0.0034700 | 0.8150153 | 0.0036067 | 0.0034433 | 0.8086974 | 0.0035788 | 0.0034166 | 0.7375967 | 0.0032046 | 0.0031718 | 0.7375967 | 0.0032046 | 0.0031718 | 0.7441824 | 0.0032332 | 0.0032001 | 3.620835 | 0.0167749 | 0.0151081 | 3.372679 | 0.0156252 | 0.0140726 | 3.147081 | 0.0145800 | 0.0131313 | 2.847577 | 0.0123986 | 0.0118137 | 2.894451 | 0.0126027 | 0.0120082 | 2.917888 | 0.0127048 | 0.0121054 | 2.975045 | 0.0132544 | 0.0122413 | 2.840833 | 0.0126565 | 0.0116891 | 2.728989 | 0.0121582 | 0.0112289 |
+| -1975 | 0.7565188 | 0.0034422 | 0.0033266 | 0.7447724 | 0.0032638 | 0.0032016 | 0.8702629 | 0.0038764 | 0.0034808 | 0.3472471 | 0.0016943 | 0.0014726 | 0.6985654 | 0.0032755 | 0.0029090 | 0.8521428 | 0.0038320 | 0.0036419 | 0.8359049 | 0.0037467 | 0.0034642 | 0.3729866 | 0.0015548 | 0.0015730 | 0.8110426 | 0.0036903 | 0.0035664 | 0.8110426 | 0.0036903 | 0.0035664 | 0.8110426 | 0.0036903 | 0.0035664 | 0.8275249 | 0.0036265 | 0.0035573 | 0.8211593 | 0.0035986 | 0.0035300 | 0.8147937 | 0.0035707 | 0.0035026 | 0.7440416 | 0.0033142 | 0.0029759 | 0.7440416 | 0.0033142 | 0.0029759 | 0.7506848 | 0.0033438 | 0.0030025 | 3.676057 | 0.0172364 | 0.0153078 | 3.424116 | 0.0160551 | 0.0142586 | 3.195078 | 0.0149812 | 0.0133049 | 2.875982 | 0.0129331 | 0.0122913 | 2.923323 | 0.0131460 | 0.0124936 | 2.946994 | 0.0132525 | 0.0125948 | 3.004739 | 0.0134679 | 0.0124523 | 2.869187 | 0.0128603 | 0.0118906 | 2.756227 | 0.0123540 | 0.0114224 |
+| -1950 | 0.7610299 | 0.0034412 | 0.0030234 | 0.7505470 | 0.0034289 | 0.0031584 | 0.8786081 | 0.0039148 | 0.0035357 | 0.3448308 | 0.0014773 | 0.0015048 | 0.7044309 | 0.0030192 | 0.0029065 | 0.8579789 | 0.0037551 | 0.0035773 | 0.8433318 | 0.0038608 | 0.0033955 | 0.3712774 | 0.0016204 | 0.0015957 | 0.8158789 | 0.0036892 | 0.0032413 | 0.8158789 | 0.0036892 | 0.0032413 | 0.8158789 | 0.0036892 | 0.0032413 | 0.8339411 | 0.0038099 | 0.0035093 | 0.8275261 | 0.0037806 | 0.0034823 | 0.8211112 | 0.0037513 | 0.0034553 | 0.7511764 | 0.0033470 | 0.0030229 | 0.7511764 | 0.0033470 | 0.0030229 | 0.7578833 | 0.0033769 | 0.0030499 | 3.706923 | 0.0158880 | 0.0152947 | 3.452866 | 0.0147991 | 0.0142465 | 3.221906 | 0.0138092 | 0.0132936 | 2.895679 | 0.0126735 | 0.0120733 | 2.943344 | 0.0128822 | 0.0122721 | 2.967177 | 0.0129865 | 0.0123714 | 3.031436 | 0.0138779 | 0.0122054 | 2.894680 | 0.0132518 | 0.0116547 | 2.780716 | 0.0127301 | 0.0111959 |
+| -1925 | 0.7750137 | 0.0036108 | 0.0031790 | 0.7585365 | 0.0034241 | 0.0031900 | 0.8855559 | 0.0039809 | 0.0036048 | 0.3447468 | 0.0014494 | 0.0014292 | 0.7112313 | 0.0031803 | 0.0029213 | 0.8703326 | 0.0040440 | 0.0035276 | 0.8598200 | 0.0039512 | 0.0034365 | 0.3711151 | 0.0016230 | 0.0015201 | 0.8308706 | 0.0038710 | 0.0034081 | 0.8308706 | 0.0038710 | 0.0034081 | 0.8308706 | 0.0038710 | 0.0034081 | 0.8428183 | 0.0038046 | 0.0035444 | 0.8363351 | 0.0037753 | 0.0035172 | 0.8298519 | 0.0037461 | 0.0034899 | 0.7571165 | 0.0034035 | 0.0030819 | 0.7571165 | 0.0034035 | 0.0030819 | 0.7638765 | 0.0034339 | 0.0031095 | 3.742709 | 0.0167358 | 0.0153729 | 3.486200 | 0.0155888 | 0.0143193 | 3.253009 | 0.0145461 | 0.0133615 | 2.937373 | 0.0136484 | 0.0119058 | 2.985724 | 0.0138730 | 0.0121017 | 3.009900 | 0.0139853 | 0.0121997 | 3.090704 | 0.0142028 | 0.0123528 | 2.951274 | 0.0135621 | 0.0117956 | 2.835082 | 0.0130281 | 0.0113312 |
+| -1900 | 0.7886307 | 0.0037779 | 0.0031990 | 0.7685124 | 0.0035454 | 0.0030982 | 0.8966369 | 0.0041521 | 0.0036662 | 0.3480029 | 0.0015424 | 0.0014862 | 0.7186595 | 0.0032221 | 0.0027951 | 0.8783972 | 0.0039268 | 0.0034666 | 0.8731062 | 0.0039785 | 0.0035926 | 0.3723700 | 0.0015681 | 0.0015016 | 0.8454689 | 0.0040502 | 0.0034296 | 0.8454689 | 0.0040502 | 0.0034296 | 0.8454689 | 0.0040502 | 0.0034296 | 0.8539026 | 0.0039394 | 0.0034425 | 0.8473341 | 0.0039091 | 0.0034160 | 0.8407656 | 0.0038788 | 0.0033895 | 0.7665903 | 0.0035499 | 0.0031344 | 0.7665903 | 0.0035499 | 0.0031344 | 0.7734349 | 0.0035816 | 0.0031624 | 3.781798 | 0.0169557 | 0.0147088 | 3.522610 | 0.0157937 | 0.0137007 | 3.286984 | 0.0147372 | 0.0127843 | 2.964590 | 0.0132530 | 0.0116998 | 3.013390 | 0.0134711 | 0.0118924 | 3.037790 | 0.0135802 | 0.0119887 | 3.138463 | 0.0143011 | 0.0129139 | 2.996878 | 0.0136560 | 0.0123314 | 2.878891 | 0.0131183 | 0.0118459 |
+| -1875 | 0.7940424 | 0.0035592 | 0.0032270 | 0.7803604 | 0.0035934 | 0.0031684 | 0.9079738 | 0.0040340 | 0.0039945 | 0.3486296 | 0.0015059 | 0.0015501 | 0.7270867 | 0.0031303 | 0.0029895 | 0.8968629 | 0.0041040 | 0.0036036 | 0.8824732 | 0.0040739 | 0.0037280 | 0.3727919 | 0.0015798 | 0.0015396 | 0.8512707 | 0.0038158 | 0.0034596 | 0.8512707 | 0.0038158 | 0.0034596 | 0.8512707 | 0.0038158 | 0.0034596 | 0.8670671 | 0.0039927 | 0.0035204 | 0.8603973 | 0.0039620 | 0.0034933 | 0.8537276 | 0.0039313 | 0.0034663 | 0.7762829 | 0.0034489 | 0.0034151 | 0.7762829 | 0.0034489 | 0.0034151 | 0.7832140 | 0.0034797 | 0.0034456 | 3.826145 | 0.0164725 | 0.0157317 | 3.563917 | 0.0153435 | 0.0146535 | 3.325528 | 0.0143172 | 0.0136733 | 3.026912 | 0.0138510 | 0.0121620 | 3.076738 | 0.0140790 | 0.0123622 | 3.101651 | 0.0141930 | 0.0124623 | 3.172133 | 0.0146440 | 0.0134007 | 3.029030 | 0.0139834 | 0.0127962 | 2.909776 | 0.0134329 | 0.0122924 |
+
+Use `read.table` function: first argument specify path to file, sep
 argument tells R what separates the columns of your data (space, comma,
 or tab). Example below is for tab separated TSV. header = T (header =
 True) means the first row is the headers for columns.
@@ -116,6 +157,33 @@ Below example replaces “*synchela*” with “\_”
 #dataframe %>% rename_with(~ gsub("_synchela_", "_", .x), contains("_synchela"))
 ```
 
+## Example dataset:
+
+``` r
+# fix the name of column 1, removing the record of the command used to make the file
+colnames(hist_tss_hg38_tutorial_spikenorm_LP78)[1] <- "Distance_from_tss"
+
+hist_tss_hg38_tutorial_spikenorm_LP78 <- hist_tss_hg38_tutorial_spikenorm_LP78 %>% 
+      ### first rename_with uses are specific to my sample name
+      # get rid of any prefix before cell type (ex: directory path)
+    rename_with(~ gsub(".GCcheck.tagdir", ".readnorm.tagdir", .x), contains("Hela")) %>% 
+    rename_with(~ gsub(".+Hela", "Hela", .x), contains("Hela")) %>% 
+      ### below two uses of rename_with are general to HOMER output
+    rename_with(~ gsub("\\.[[:digit:]]$", "_minus", .x), contains("Tags")) %>% 
+    rename_with(~ gsub("\\.\\.\\.", "_", .x), contains("Tags"))
+
+knitr::kable(head(hist_tss_hg38_tutorial_spikenorm_LP78))    
+```
+
+| Distance_from_tss | HelaS3_100sync_0inter_1_H3K9ac_1.hg38.readnorm.tagdir.Coverage | HelaS3_100sync_0inter_1_H3K9ac_1.hg38.readnorm.tagdir_Tags | HelaS3_100sync_0inter_1_H3K9ac_1.hg38.readnorm.tagdir_Tags_minus | HelaS3_100sync_0inter_1_H3K9ac_2.hg38.readnorm.tagdir.Coverage | HelaS3_100sync_0inter_1_H3K9ac_2.hg38.readnorm.tagdir_Tags | HelaS3_100sync_0inter_1_H3K9ac_2.hg38.readnorm.tagdir_Tags_minus | HelaS3_100sync_0inter_1_H3K9ac_3.hg38.readnorm.tagdir.Coverage | HelaS3_100sync_0inter_1_H3K9ac_3.hg38.readnorm.tagdir_Tags | HelaS3_100sync_0inter_1_H3K9ac_3.hg38.readnorm.tagdir_Tags_minus | HelaS3_100sync_0inter_1_input_1.hg38.readnorm.tagdir.Coverage | HelaS3_100sync_0inter_1_input_1.hg38.readnorm.tagdir_Tags | HelaS3_100sync_0inter_1_input_1.hg38.readnorm.tagdir_Tags_minus | HelaS3_0sync_100inter_1_H3K9ac_1.hg38.readnorm.tagdir.Coverage | HelaS3_0sync_100inter_1_H3K9ac_1.hg38.readnorm.tagdir_Tags | HelaS3_0sync_100inter_1_H3K9ac_1.hg38.readnorm.tagdir_Tags_minus | HelaS3_0sync_100inter_1_H3K9ac_2.hg38.readnorm.tagdir.Coverage | HelaS3_0sync_100inter_1_H3K9ac_2.hg38.readnorm.tagdir_Tags | HelaS3_0sync_100inter_1_H3K9ac_2.hg38.readnorm.tagdir_Tags_minus | HelaS3_0sync_100inter_1_H3K9ac_3.hg38.readnorm.tagdir.Coverage | HelaS3_0sync_100inter_1_H3K9ac_3.hg38.readnorm.tagdir_Tags | HelaS3_0sync_100inter_1_H3K9ac_3.hg38.readnorm.tagdir_Tags_minus | HelaS3_0sync_100inter_1_input_1.hg38.readnorm.tagdir.Coverage | HelaS3_0sync_100inter_1_input_1.hg38.readnorm.tagdir_Tags | HelaS3_0sync_100inter_1_input_1.hg38.readnorm.tagdir_Tags_minus | HelaS3_100sync_0inter_1_H3K9ac_1.fly.normalized.tagdir.Coverage | HelaS3_100sync_0inter_1_H3K9ac_1.fly.normalized.tagdir_Tags | HelaS3_100sync_0inter_1_H3K9ac_1.fly.normalized.tagdir_Tags_minus | HelaS3_100sync_0inter_1_H3K9ac_1.normalized.tagdir.Coverage | HelaS3_100sync_0inter_1_H3K9ac_1.normalized.tagdir_Tags | HelaS3_100sync_0inter_1_H3K9ac_1.normalized.tagdir_Tags_minus | HelaS3_100sync_0inter_1_H3K9ac_1.yeast.normalized.tagdir.Coverage | HelaS3_100sync_0inter_1_H3K9ac_1.yeast.normalized.tagdir_Tags | HelaS3_100sync_0inter_1_H3K9ac_1.yeast.normalized.tagdir_Tags_minus | HelaS3_100sync_0inter_1_H3K9ac_2.fly.normalized.tagdir.Coverage | HelaS3_100sync_0inter_1_H3K9ac_2.fly.normalized.tagdir_Tags | HelaS3_100sync_0inter_1_H3K9ac_2.fly.normalized.tagdir_Tags_minus | HelaS3_100sync_0inter_1_H3K9ac_2.normalized.tagdir.Coverage | HelaS3_100sync_0inter_1_H3K9ac_2.normalized.tagdir_Tags | HelaS3_100sync_0inter_1_H3K9ac_2.normalized.tagdir_Tags_minus | HelaS3_100sync_0inter_1_H3K9ac_2.yeast.normalized.tagdir.Coverage | HelaS3_100sync_0inter_1_H3K9ac_2.yeast.normalized.tagdir_Tags | HelaS3_100sync_0inter_1_H3K9ac_2.yeast.normalized.tagdir_Tags_minus | HelaS3_100sync_0inter_1_H3K9ac_3.fly.normalized.tagdir.Coverage | HelaS3_100sync_0inter_1_H3K9ac_3.fly.normalized.tagdir_Tags | HelaS3_100sync_0inter_1_H3K9ac_3.fly.normalized.tagdir_Tags_minus | HelaS3_100sync_0inter_1_H3K9ac_3.normalized.tagdir.Coverage | HelaS3_100sync_0inter_1_H3K9ac_3.normalized.tagdir_Tags | HelaS3_100sync_0inter_1_H3K9ac_3.normalized.tagdir_Tags_minus | HelaS3_100sync_0inter_1_H3K9ac_3.yeast.normalized.tagdir.Coverage | HelaS3_100sync_0inter_1_H3K9ac_3.yeast.normalized.tagdir_Tags | HelaS3_100sync_0inter_1_H3K9ac_3.yeast.normalized.tagdir_Tags_minus | HelaS3_0sync_100inter_1_H3K9ac_1.fly.normalized.tagdir.Coverage | HelaS3_0sync_100inter_1_H3K9ac_1.fly.normalized.tagdir_Tags | HelaS3_0sync_100inter_1_H3K9ac_1.fly.normalized.tagdir_Tags_minus | HelaS3_0sync_100inter_1_H3K9ac_1.normalized.tagdir.Coverage | HelaS3_0sync_100inter_1_H3K9ac_1.normalized.tagdir_Tags | HelaS3_0sync_100inter_1_H3K9ac_1.normalized.tagdir_Tags_minus | HelaS3_0sync_100inter_1_H3K9ac_1.yeast.normalized.tagdir.Coverage | HelaS3_0sync_100inter_1_H3K9ac_1.yeast.normalized.tagdir_Tags | HelaS3_0sync_100inter_1_H3K9ac_1.yeast.normalized.tagdir_Tags_minus | HelaS3_0sync_100inter_1_H3K9ac_2.fly.normalized.tagdir.Coverage | HelaS3_0sync_100inter_1_H3K9ac_2.fly.normalized.tagdir_Tags | HelaS3_0sync_100inter_1_H3K9ac_2.fly.normalized.tagdir_Tags_minus | HelaS3_0sync_100inter_1_H3K9ac_2.normalized.tagdir.Coverage | HelaS3_0sync_100inter_1_H3K9ac_2.normalized.tagdir_Tags | HelaS3_0sync_100inter_1_H3K9ac_2.normalized.tagdir_Tags_minus | HelaS3_0sync_100inter_1_H3K9ac_2.yeast.normalized.tagdir.Coverage | HelaS3_0sync_100inter_1_H3K9ac_2.yeast.normalized.tagdir_Tags | HelaS3_0sync_100inter_1_H3K9ac_2.yeast.normalized.tagdir_Tags_minus | HelaS3_0sync_100inter_1_H3K9ac_3.fly.normalized.tagdir.Coverage | HelaS3_0sync_100inter_1_H3K9ac_3.fly.normalized.tagdir_Tags | HelaS3_0sync_100inter_1_H3K9ac_3.fly.normalized.tagdir_Tags_minus | HelaS3_0sync_100inter_1_H3K9ac_3.normalized.tagdir.Coverage | HelaS3_0sync_100inter_1_H3K9ac_3.normalized.tagdir_Tags | HelaS3_0sync_100inter_1_H3K9ac_3.normalized.tagdir_Tags_minus | HelaS3_0sync_100inter_1_H3K9ac_3.yeast.normalized.tagdir.Coverage | HelaS3_0sync_100inter_1_H3K9ac_3.yeast.normalized.tagdir_Tags | HelaS3_0sync_100inter_1_H3K9ac_3.yeast.normalized.tagdir_Tags_minus |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| -2000 | 0.7488139 | 0.0030869 | 0.0031685 | 0.7391999 | 0.0032712 | 0.0031230 | 0.8627247 | 0.0037483 | 0.0037099 | 0.3422466 | 0.0014854 | 0.0014811 | 0.6880715 | 0.0031877 | 0.0028710 | 0.8437267 | 0.0036737 | 0.0035004 | 0.8276442 | 0.0036873 | 0.0034055 | 0.3696493 | 0.0016236 | 0.0015289 | 0.8027825 | 0.0033094 | 0.0033969 | 0.8027825 | 0.0033094 | 0.0033969 | 0.8027825 | 0.0033094 | 0.0033969 | 0.8213333 | 0.0036347 | 0.0034700 | 0.8150153 | 0.0036067 | 0.0034433 | 0.8086974 | 0.0035788 | 0.0034166 | 0.7375967 | 0.0032046 | 0.0031718 | 0.7375967 | 0.0032046 | 0.0031718 | 0.7441824 | 0.0032332 | 0.0032001 | 3.620835 | 0.0167749 | 0.0151081 | 3.372679 | 0.0156252 | 0.0140726 | 3.147081 | 0.0145800 | 0.0131313 | 2.847577 | 0.0123986 | 0.0118137 | 2.894451 | 0.0126027 | 0.0120082 | 2.917888 | 0.0127048 | 0.0121054 | 2.975045 | 0.0132544 | 0.0122413 | 2.840833 | 0.0126565 | 0.0116891 | 2.728989 | 0.0121582 | 0.0112289 |
+| -1975 | 0.7565188 | 0.0034422 | 0.0033266 | 0.7447724 | 0.0032638 | 0.0032016 | 0.8702629 | 0.0038764 | 0.0034808 | 0.3472471 | 0.0016943 | 0.0014726 | 0.6985654 | 0.0032755 | 0.0029090 | 0.8521428 | 0.0038320 | 0.0036419 | 0.8359049 | 0.0037467 | 0.0034642 | 0.3729866 | 0.0015548 | 0.0015730 | 0.8110426 | 0.0036903 | 0.0035664 | 0.8110426 | 0.0036903 | 0.0035664 | 0.8110426 | 0.0036903 | 0.0035664 | 0.8275249 | 0.0036265 | 0.0035573 | 0.8211593 | 0.0035986 | 0.0035300 | 0.8147937 | 0.0035707 | 0.0035026 | 0.7440416 | 0.0033142 | 0.0029759 | 0.7440416 | 0.0033142 | 0.0029759 | 0.7506848 | 0.0033438 | 0.0030025 | 3.676057 | 0.0172364 | 0.0153078 | 3.424116 | 0.0160551 | 0.0142586 | 3.195078 | 0.0149812 | 0.0133049 | 2.875982 | 0.0129331 | 0.0122913 | 2.923323 | 0.0131460 | 0.0124936 | 2.946994 | 0.0132525 | 0.0125948 | 3.004739 | 0.0134679 | 0.0124523 | 2.869187 | 0.0128603 | 0.0118906 | 2.756227 | 0.0123540 | 0.0114224 |
+| -1950 | 0.7610299 | 0.0034412 | 0.0030234 | 0.7505470 | 0.0034289 | 0.0031584 | 0.8786081 | 0.0039148 | 0.0035357 | 0.3448308 | 0.0014773 | 0.0015048 | 0.7044309 | 0.0030192 | 0.0029065 | 0.8579789 | 0.0037551 | 0.0035773 | 0.8433318 | 0.0038608 | 0.0033955 | 0.3712774 | 0.0016204 | 0.0015957 | 0.8158789 | 0.0036892 | 0.0032413 | 0.8158789 | 0.0036892 | 0.0032413 | 0.8158789 | 0.0036892 | 0.0032413 | 0.8339411 | 0.0038099 | 0.0035093 | 0.8275261 | 0.0037806 | 0.0034823 | 0.8211112 | 0.0037513 | 0.0034553 | 0.7511764 | 0.0033470 | 0.0030229 | 0.7511764 | 0.0033470 | 0.0030229 | 0.7578833 | 0.0033769 | 0.0030499 | 3.706923 | 0.0158880 | 0.0152947 | 3.452866 | 0.0147991 | 0.0142465 | 3.221906 | 0.0138092 | 0.0132936 | 2.895679 | 0.0126735 | 0.0120733 | 2.943344 | 0.0128822 | 0.0122721 | 2.967177 | 0.0129865 | 0.0123714 | 3.031436 | 0.0138779 | 0.0122054 | 2.894680 | 0.0132518 | 0.0116547 | 2.780716 | 0.0127301 | 0.0111959 |
+| -1925 | 0.7750137 | 0.0036108 | 0.0031790 | 0.7585365 | 0.0034241 | 0.0031900 | 0.8855559 | 0.0039809 | 0.0036048 | 0.3447468 | 0.0014494 | 0.0014292 | 0.7112313 | 0.0031803 | 0.0029213 | 0.8703326 | 0.0040440 | 0.0035276 | 0.8598200 | 0.0039512 | 0.0034365 | 0.3711151 | 0.0016230 | 0.0015201 | 0.8308706 | 0.0038710 | 0.0034081 | 0.8308706 | 0.0038710 | 0.0034081 | 0.8308706 | 0.0038710 | 0.0034081 | 0.8428183 | 0.0038046 | 0.0035444 | 0.8363351 | 0.0037753 | 0.0035172 | 0.8298519 | 0.0037461 | 0.0034899 | 0.7571165 | 0.0034035 | 0.0030819 | 0.7571165 | 0.0034035 | 0.0030819 | 0.7638765 | 0.0034339 | 0.0031095 | 3.742709 | 0.0167358 | 0.0153729 | 3.486200 | 0.0155888 | 0.0143193 | 3.253009 | 0.0145461 | 0.0133615 | 2.937373 | 0.0136484 | 0.0119058 | 2.985724 | 0.0138730 | 0.0121017 | 3.009900 | 0.0139853 | 0.0121997 | 3.090704 | 0.0142028 | 0.0123528 | 2.951274 | 0.0135621 | 0.0117956 | 2.835082 | 0.0130281 | 0.0113312 |
+| -1900 | 0.7886307 | 0.0037779 | 0.0031990 | 0.7685124 | 0.0035454 | 0.0030982 | 0.8966369 | 0.0041521 | 0.0036662 | 0.3480029 | 0.0015424 | 0.0014862 | 0.7186595 | 0.0032221 | 0.0027951 | 0.8783972 | 0.0039268 | 0.0034666 | 0.8731062 | 0.0039785 | 0.0035926 | 0.3723700 | 0.0015681 | 0.0015016 | 0.8454689 | 0.0040502 | 0.0034296 | 0.8454689 | 0.0040502 | 0.0034296 | 0.8454689 | 0.0040502 | 0.0034296 | 0.8539026 | 0.0039394 | 0.0034425 | 0.8473341 | 0.0039091 | 0.0034160 | 0.8407656 | 0.0038788 | 0.0033895 | 0.7665903 | 0.0035499 | 0.0031344 | 0.7665903 | 0.0035499 | 0.0031344 | 0.7734349 | 0.0035816 | 0.0031624 | 3.781798 | 0.0169557 | 0.0147088 | 3.522610 | 0.0157937 | 0.0137007 | 3.286984 | 0.0147372 | 0.0127843 | 2.964590 | 0.0132530 | 0.0116998 | 3.013390 | 0.0134711 | 0.0118924 | 3.037790 | 0.0135802 | 0.0119887 | 3.138463 | 0.0143011 | 0.0129139 | 2.996878 | 0.0136560 | 0.0123314 | 2.878891 | 0.0131183 | 0.0118459 |
+| -1875 | 0.7940424 | 0.0035592 | 0.0032270 | 0.7803604 | 0.0035934 | 0.0031684 | 0.9079738 | 0.0040340 | 0.0039945 | 0.3486296 | 0.0015059 | 0.0015501 | 0.7270867 | 0.0031303 | 0.0029895 | 0.8968629 | 0.0041040 | 0.0036036 | 0.8824732 | 0.0040739 | 0.0037280 | 0.3727919 | 0.0015798 | 0.0015396 | 0.8512707 | 0.0038158 | 0.0034596 | 0.8512707 | 0.0038158 | 0.0034596 | 0.8512707 | 0.0038158 | 0.0034596 | 0.8670671 | 0.0039927 | 0.0035204 | 0.8603973 | 0.0039620 | 0.0034933 | 0.8537276 | 0.0039313 | 0.0034663 | 0.7762829 | 0.0034489 | 0.0034151 | 0.7762829 | 0.0034489 | 0.0034151 | 0.7832140 | 0.0034797 | 0.0034456 | 3.826145 | 0.0164725 | 0.0157317 | 3.563917 | 0.0153435 | 0.0146535 | 3.325528 | 0.0143172 | 0.0136733 | 3.026912 | 0.0138510 | 0.0121620 | 3.076738 | 0.0140790 | 0.0123622 | 3.101651 | 0.0141930 | 0.0124623 | 3.172133 | 0.0146440 | 0.0134007 | 3.029030 | 0.0139834 | 0.0127962 | 2.909776 | 0.0134329 | 0.0122924 |
+
 ## TidyR
 
 ### `gather()` (outdated, use pivot_longer now!)
@@ -133,17 +201,49 @@ LH51_hg38only_phredtrim_mapq_tidy <- LH51_phredtrim_hg38_MAPQscores %>% gather(S
 ### `pivot_longer()`
 
 ``` r
-counts_megapeaks_hg38_LH56_tidy <- counts_megapeaks_hg38_LH56_clean %>% 
-  select(PeakID, contains("Tag")) %>%    
-  pivot_longer(
-      cols = !PeakID,           # pivot all cols except PeakID
-      names_to = "Sample",      # sample names become factor col
-      values_to = "Peak_Tags")  # all values in new col
+# select Coverage columns and Distance_from_tss only
+hist_tss_hg38_tutorial_spikenorm_LP78_cov <- 
+  hist_tss_hg38_tutorial_spikenorm_LP78 %>% select(contains("Coverage"))
+
+hist_tss_hg38_tutorial_spikenorm_LP78_cov$Distance_from_tss <- 
+      hist_tss_hg38_tutorial_spikenorm_LP78$Distance_from_tss
+
+# tidy format
+hist_tss_hg38_tutorial_spikenorm_LP78_long <- 
+    hist_tss_hg38_tutorial_spikenorm_LP78_cov %>% pivot_longer(
+      cols = -"Distance_from_tss", 
+      names_to = "Sample", 
+      values_to = "Coverage")
+
+knitr::kable(head(hist_tss_hg38_tutorial_spikenorm_LP78_long))
+```
+
+| Distance_from_tss | Sample | Coverage |
+|---:|:---|---:|
+| -2000 | HelaS3_100sync_0inter_1_H3K9ac_1.hg38.readnorm.tagdir.Coverage | 0.7488139 |
+| -2000 | HelaS3_100sync_0inter_1_H3K9ac_2.hg38.readnorm.tagdir.Coverage | 0.7391999 |
+| -2000 | HelaS3_100sync_0inter_1_H3K9ac_3.hg38.readnorm.tagdir.Coverage | 0.8627247 |
+| -2000 | HelaS3_100sync_0inter_1_input_1.hg38.readnorm.tagdir.Coverage | 0.3422466 |
+| -2000 | HelaS3_0sync_100inter_1_H3K9ac_1.hg38.readnorm.tagdir.Coverage | 0.6880715 |
+| -2000 | HelaS3_0sync_100inter_1_H3K9ac_2.hg38.readnorm.tagdir.Coverage | 0.8437267 |
+
+``` r
+hist_tss_hg38_tutorial_spikenorm_LP78_long <- hist_tss_hg38_tutorial_spikenorm_LP78_long %>%
+  mutate(
+    cell = str_match(Sample, '([^_]+)(?:_[^_]+){5}$')[,2],
+    treatment = str_match(Sample, '([^_]+)(?:_[^_]+){4}$')[,2],
+    timepoint = str_remove(str_match(Sample, '([^_]+)(?:_[^_]+){3}$')[,2], "TSA"),
+    biorep = str_match(Sample, '([^_]+)(?:_[^_]+){2}$')[,2],
+    antibody = str_match(Sample, '([^_]+)(?:_[^_]+){1}$')[,2],
+    techrep = str_match(Sample, '([^_]+)(?:_[^_]+){0}$')[,2]
+  )
 ```
 
 # Base Plots
 
 ## Line
+
+General Formula:
 
 > `Plot_line <- ggplot(data=dataframe, aes(x=xvariable)) + geom_line(aes(y=yvariable1, color= ”name/hexcode”)), + geom_line(aes(y=yvariable2, color= “name/hexcode”)), + geom_line(etc.) + labs (x = “X Axis Label”, y = “Y Axis Label”, title = “Plot title”)`
 
@@ -153,7 +253,7 @@ ggplot(mtcars, aes(wt, mpg, group = cyl)) +
   labs(title = "Miles per Gallon vs Car Weight, Colored by # of Cylinders")
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-6-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-11-1.png)
 
 ## Histogram
 
@@ -166,7 +266,7 @@ density_hist +
   ggtitle("Histogram & Density Curve of Sepal Width")
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-7-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-12-1.png)
 
 ## Pie
 
@@ -203,7 +303,7 @@ input_piechart <- ggplot(input_presence, aes(x="", y= paper_count, fill=input_st
 input_piechart
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-9-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-14-1.png)
 
 ## Scatterplot
 
@@ -212,7 +312,7 @@ ggplot(diamonds, aes(carat, price, color = clarity)) +
   geom_point()
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-10-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-15-1.png)
 
 Remove outline of point (for scatterplots with many overlapping points)
 
@@ -221,7 +321,7 @@ ggplot(diamonds, aes(carat, price, color = clarity)) +
   geom_point(stroke = NA, alpha = 0.3)
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-11-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-16-1.png)
 
 NOTE: for scatterplots the title in labs() must come first and be lower
 case
@@ -242,7 +342,7 @@ ggplot(data, aes(x=x, y=y) ) +
   geom_point()
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-12-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-17-1.png)
 
 In the above graph, where is the highest density of points?
 
@@ -258,7 +358,7 @@ ggplot(data, aes(x=x, y=y) ) +
   theme_bw()
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-13-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-18-1.png)
 
 Make it pretty:
 
@@ -270,7 +370,7 @@ ggplot(data, aes(x=x, y=y) ) +
   theme_bw()
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-14-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-19-1.png)
 
 ### 2D Density plot with Hex bins
 
@@ -284,7 +384,7 @@ ggplot(data, aes(x=x, y=y)) +
     Caused by error in `compute_group()`:
     ! The package "hexbin" is required for `stat_bin_hex()`.
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-15-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-20-1.png)
 
 ``` r
 # Bin size control + color palette
@@ -297,7 +397,7 @@ ggplot(data, aes(x=x, y=y)) +
     Caused by error in `compute_group()`:
     ! The package "hexbin" is required for `stat_bin_hex()`.
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-16-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-21-1.png)
 
 ### 2d distribution with geom_density_2d or stat_density_2d
 
@@ -308,7 +408,7 @@ ggplot(data, aes(x=x, y=y) ) +
   geom_density_2d()
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-17-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-22-1.png)
 
 Area only
 
@@ -320,7 +420,7 @@ ggplot(data, aes(x=x, y=y) ) +
     Warning: The dot-dot notation (`..level..`) was deprecated in ggplot2 3.4.0.
     ℹ Please use `after_stat(level)` instead.
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-18-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-23-1.png)
 
 Area + Contour
 
@@ -330,7 +430,7 @@ ggplot(data, aes(x=x, y=y) ) +
                   geom = "polygon", colour="white")
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-19-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-24-1.png)
 
 Using Raster
 
@@ -344,7 +444,7 @@ ggplot(data, aes(x=x, y=y) ) +
   )
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-20-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-25-1.png)
 
 ## Scatterplot + Smoothing Line
 
@@ -357,7 +457,7 @@ ggplot(diamonds, aes(carat, price, color = clarity)) +
 
     `geom_smooth()` using method = 'gam' and formula = 'y ~ s(x, bs = "cs")'
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-21-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-26-1.png)
 
 ## Add Linear model
 
@@ -370,7 +470,7 @@ ggplot(diamonds, aes(carat, price, color = clarity)) +
 
     `geom_smooth()` using formula = 'y ~ x'
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-22-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-27-1.png)
 
 ## Text Scatter Plot
 
@@ -387,7 +487,7 @@ plt_mpg_vs_wt +
     Warning: Use of `mtcars$cyl` is discouraged.
     ℹ Use `cyl` instead.
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-23-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-28-1.png)
 
 Above plot is the weight of the car vs the miles per gallon, with each
 “point” being labeled with the number of cylinders the car has (a
@@ -400,7 +500,7 @@ ggplot(mtcars, aes(wt, mpg, color = cyl)) +
   geom_text(label = rownames(mtcars), color = "red")
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-24-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-29-1.png)
 
 ## Barplots - Stacked
 
@@ -410,7 +510,7 @@ ggplot(iris, aes(Sepal.Length, fill = Species)) +
   labs(x = "Species", y = "Sepal Length")
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-25-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-30-1.png)
 
 ### Manual Color Scheme and Labeling
 
@@ -423,7 +523,7 @@ ggplot(iris, aes(Sepal.Length, fill = Species)) +
   scale_fill_manual("Transmission", values = palette)
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-26-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-31-1.png)
 
 ## Barplots - side by side
 
@@ -435,7 +535,7 @@ ggplot(iris, aes(Sepal.Length, fill = Species)) +
   scale_fill_manual("Species", values = palette) 
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-27-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-32-1.png)
 
 ## Violin Plot
 
@@ -444,7 +544,7 @@ ggplot(data = diamonds, aes(x=cut, y=price, fill = cut)) +
   geom_violin()
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-28-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-33-1.png)
 
 ## Dotplot (2 category variables)
 
@@ -487,7 +587,7 @@ ggplot(diamonds) +
 
     Picking joint bandwidth of 403
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-31-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-36-1.png)
 
 Can also make a histogram:
 
@@ -498,7 +598,7 @@ ggplot(diamonds) +
   theme(legend.position = "none")
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-32-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-37-1.png)
 
 You can also map the color `fill` to a numeric variable (for instance
 the price on the x axis). There are two requirements:
@@ -526,7 +626,7 @@ ggplot(diamonds) +
 
     Picking joint bandwidth of 0.144
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-33-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-38-1.png)
 
 ## Marginal Histograms
 
@@ -542,7 +642,7 @@ diamonds_scatter <- ggplot(diamonds, aes(carat, price, color = clarity)) +
 ggMarginal(diamonds_scatter, groupColour = TRUE, groupFill = TRUE)
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-35-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-40-1.png)
 
 # Add-ons
 
@@ -567,7 +667,7 @@ ggplot(mtcars, aes(wt, mpg, group = cyl)) +
   scale_alpha_manual(values = c(0.2, 0.5, 1), name = "Cylinders", labels = c("4", "6", "8"))
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-36-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-41-1.png)
 
 ## Faceting
 
@@ -581,7 +681,7 @@ ggplot(diamonds, aes(carat, price, color = clarity)) +
 
     `geom_smooth()` using method = 'gam' and formula = 'y ~ s(x, bs = "cs")'
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-37-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-42-1.png)
 
 ### Subplots in columns and rows (split by 2 variables)
 
@@ -658,7 +758,7 @@ ggplot(diamonds) +
 
     Picking joint bandwidth of 0.306
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-40-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-45-1.png)
 
 ### Faceting and zooming on subset of plot
 
@@ -745,7 +845,7 @@ ggplot(iris) +
   geom_point()
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-46-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-51-1.png)
 
 Jitter
 
@@ -755,7 +855,7 @@ ggplot(iris) +
   geom_jitter()
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-47-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-52-1.png)
 
 Or
 
@@ -765,7 +865,7 @@ ggplot(iris) +
   geom_point(position= "jitter")
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-48-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-53-1.png)
 
 ### Legend positioning
 
@@ -786,7 +886,7 @@ ggplot(iris) +
     3.5.0.
     ℹ Please use the `legend.position.inside` argument of `theme()` instead.
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-49-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-54-1.png)
 
 Add border to legend if inside graph to reduce chance of
 misinterpretation:
@@ -802,7 +902,7 @@ ggplot(iris) +
                                     colour ="grey20"))
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-50-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-55-1.png)
 
 ## Plot on log scale
 
@@ -815,7 +915,7 @@ ggplot(iris) +
   scale_x_log10() + scale_y_log10()
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-51-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-56-1.png)
 
 ## Set x and y axes
 
@@ -834,10 +934,10 @@ ggplot(iris) +
   scale_y_continuous(limits = c(1, 5))
 ```
 
-    Warning: Removed 13 rows containing missing values or values outside the scale range
+    Warning: Removed 12 rows containing missing values or values outside the scale range
     (`geom_point()`).
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-52-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-57-1.png)
 
 ### Strategy 2: coord_cartesian
 
@@ -853,7 +953,7 @@ ggplot(iris) +
   coord_cartesian(xlim = c(4, 7), ylim = c(1, 5))
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-53-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-58-1.png)
 
 ## Add regression line
 
@@ -871,7 +971,7 @@ ggplot(iris) +
 
     `geom_smooth()` using formula = 'y ~ x'
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-54-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-59-1.png)
 
 ## Add x = y line
 
@@ -929,7 +1029,7 @@ ggplot(data = acadia) +
 
 ## R Color Brewer
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-60-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-65-1.png)
 
 Get hex codes from the color schemes:
 
@@ -994,7 +1094,7 @@ seecol(list(h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, h11, h12, h13, h15),
        pal_names = c("Dynamic", "Earth", "Terrain", "Berlin", "Oslo", "Lajolla", "Cork", "Vik", "Fall", "Sunset", "Purple-Orange", "Dark-Mint", "Peach", "Roma"))
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-64-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-69-1.png)
 
 See all hcl palettes:
 
@@ -1062,27 +1162,27 @@ hcl.swatch <- function(type = NULL, n = 5, nrow = 11,
 hcl.swatch("qualitative")
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-65-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-70-1.png)
 
 ``` r
 hcl.swatch("sequential")
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-66-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-71-1.png)
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-66-2.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-71-2.png)
 
 ``` r
 hcl.swatch("diverging")
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-67-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-72-1.png)
 
 ``` r
 hcl.swatch("divergingx")
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-68-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-73-1.png)
 
 ## Manual Color Scheme and Labeling
 
@@ -1097,7 +1197,7 @@ ggplot(iris, aes(Petal.Width, fill = Species)) +
   scale_fill_manual("Species", values = iris_palette)
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-69-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-74-1.png)
 
 # Labels
 
@@ -1131,7 +1231,7 @@ ggplot(iris) +
   )
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-70-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-75-1.png)
 
 For bar/violin/similar: `scale_fill_discrete`
 
@@ -1161,7 +1261,7 @@ ggplot(data=df, aes(x = date, y = price)) +
   geom_line()
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-72-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-77-1.png)
 
 Format dates:
 
@@ -1179,14 +1279,14 @@ ggplot(data=df, aes(x = date, y = price)) +
   scale_x_date(date_labels = "%b/%d")
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-73-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-78-1.png)
 
 ``` r
 ggplot(data=df, aes(x = date, y = price)) +
   geom_line() + scale_x_date(date_labels = "%U")
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-74-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-79-1.png)
 
 ## format axes numbers
 
@@ -1200,7 +1300,7 @@ ggplot(data = gapminder %>% filter(year == 2007) %>% arrange(-pop) %>% top_n(10,
   geom_bar(stat = "identity")
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-75-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-80-1.png)
 
 ### full numbers -\> Add commas
 
@@ -1213,7 +1313,7 @@ ggplot(data = gapminder %>% filter(year == 2007) %>% arrange(-pop) %>% top_n(10,
   scale_y_continuous(labels = scales::comma)
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-76-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-81-1.png)
 
 ### Full numbers -\> Millions or Billions
 
@@ -1297,4 +1397,4 @@ grid.arrange(p1, p2, p3, p4, p5,
   widths = c(5,6,5))
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-81-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-86-1.png)
