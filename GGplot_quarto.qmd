@@ -18,12 +18,7 @@ theme_set(theme_classic())
 
 Titration of mitotic/interphase HeLa-S3 cells: from our preprint [here](https://pubmed.ncbi.nlm.nih.gov/41394721/)
 
-![H3K9ac titration dataset]("GGplot_quarto_files/H3K9ac_titration_dataset_example.png") 
-
-```{r}
-knitr::include_graphics("/Users/laurenpatel/Documents/Research/H3K9ac_titration_dataset_example.png")
-```
-
+![H3K9ac titration dataset](GGplot_quarto_files/H3K9ac_titration_dataset_example.png) 
 
 # Importing Data
 
@@ -40,7 +35,7 @@ knitr::include_graphics("/Users/laurenpatel/Documents/Research/H3K9ac_titration_
 Our example dataset is generated with HOMER `annotatePeaks`, quantifying H3K9ac ChIP-seq signal at RefSeq TSSs. 
 
 ```{r}
-hist_tss_hg38_tutorial_spikenorm_LP78 <- read.delim("~/Documents/Research/LP_78/hist_tss_hg38_LP78_readnorm_vs_spikenorm.txt")
+hist_tss_hg38_tutorial_spikenorm_LP78 <- read.delim("~/Documents/Research/LP_78/hist_tss_hg38_spikenorm_LP78.txt")
 ```
 
 Before cleaning, the headers are messy, and contain the original function used to make the file:
@@ -93,18 +88,9 @@ hist_tss_hg38_tutorial_spikenorm_LP78 <- hist_tss_hg38_tutorial_spikenorm_LP78 %
 knitr::kable(head(hist_tss_hg38_tutorial_spikenorm_LP78))    
 ```
 
-## TidyR
+## Tidyverse
 
-### `gather()` (outdated, use pivot_longer now!)
-
-Convention: `Gather(new independent var, new dependent var, column1, column2, column3, columnN)`
-
- - puts column names in *new independent var* 
- - values in *new dependent var*
-
-```{r, eval = FALSE}
-LH51_hg38only_phredtrim_mapq_tidy <- LH51_phredtrim_hg38_MAPQscores %>% gather(Sample, Counts, a_count, b_count, c_count, d_count, q_count, r_count, s_count, t_count)
-```
+See full tutorial [here](https://github.com/lapatel22/tutorials/blob/main/R_tidyverse_cheatsheet.md) for tidyverse operations. We will rely on three main functions from this library for plotting: `pivot_longer`, `mutate`, and `str_match`
 
 ### `pivot_longer()`
 
@@ -131,7 +117,7 @@ hist_tss_hg38_tutorial_spikenorm_LP78_long <- hist_tss_hg38_tutorial_spikenorm_L
   mutate(
     cell = str_match(Sample, '([^_]+)(?:_[^_]+){5}$')[,2],
     treatment = str_match(Sample, '([^_]+)(?:_[^_]+){4}$')[,2],
-    timepoint = str_remove(str_match(Sample, '([^_]+)(?:_[^_]+){3}$')[,2], "TSA"),
+    timepoint = str_remove(str_match(Sample, '([^_]+)(?:_[^_]+){3}$')[,2], "inter"),
     biorep = str_match(Sample, '([^_]+)(?:_[^_]+){2}$')[,2],
     antibody = str_match(Sample, '([^_]+)(?:_[^_]+){1}$')[,2],
     techrep = str_match(Sample, '([^_]+)(?:_[^_]+){0}$')[,2]
@@ -146,10 +132,43 @@ General Formula:
 
 > `Plot_line <- ggplot(data=dataframe, aes(x=xvariable)) + geom_line(aes(y=yvariable1, color= ”name/hexcode”)), + geom_line(aes(y=yvariable2, color= “name/hexcode”)), + geom_line(etc.) + labs (x = “X Axis Label”, y = “Y Axis Label”, title = “Plot title”)`
 
-```{r, fig.width=4, fig.height=3}
-ggplot(mtcars, aes(wt, mpg, group = cyl)) + 
-  geom_line(aes(color = cyl)) + 
-  labs(title = "Miles per Gallon vs Car Weight, Colored by # of Cylinders")
+
+To plot our data, we simply plot our y variable (`Coverage`) vs the x variable (`Distance from the TSS`). But because the data is in tidy format, and we want to plot each sample uniquely, we must tell ggplot to group the data by `Sample`.
+
+```{r, fig.width=4.5, fig.height=4}
+hist_tss_hg38_tutorial_spikenorm_LP78_long %>% 
+  filter(grepl("_..normalized", Sample)) %>%
+ggplot() + 
+  aes(x = Distance_from_tss, y = Coverage, 
+      group = Sample) + 
+  geom_line()
+```
+
+The above plot is technically showing the data we are interested in, but it's not overly informative. First, by setting color equal to our experimental variable (the % of interphase cells in each sample), we see the expected titration pattern has emerged. 
+
+```{r, fig.width=7, fig.height=4}
+hist_tss_hg38_tutorial_spikenorm_LP78_long %>% 
+  filter(grepl("_..normalized", Sample)) %>%
+ggplot() + 
+  aes(x = Distance_from_tss, y = Coverage, 
+      group = Sample, 
+      color = as.factor(as.numeric(timepoint))) + 
+  geom_line() 
+```
+
+Notice as soon as a variable is mapped to an aesthetic (in this case, we set the color equal to our experiment conditions), ggplot auto-generates a legend. This is nice, but we should also make the legend more descriptive, and add more accurate plot labels in general. Plot labels are added with the `labs()` function.
+
+```{r, fig.width=6, fig.height=4}
+hist_tss_hg38_tutorial_spikenorm_LP78_long %>% 
+  filter(grepl("_..normalized", Sample)) %>%
+ggplot() + 
+  aes(x = Distance_from_tss, y = Coverage, 
+      group = Sample, 
+      color = as.factor(as.numeric(timepoint))) + 
+  geom_line() + 
+  labs(title = "H3K9ac around RefSeq TSSs", 
+       x = "Distance from TSS", y = "ChIP-wrangler normalized Coverage", 
+       color = "% Interphase Cells")
 ```
 
 ## Histogram
@@ -692,9 +711,8 @@ library(viridis)
 ```
 
 ### Continuous Color Schemes
-```{r, echo = FALSE, eval = FALSE}
-knitr::include_graphics("C:\\Users\\lhodg\\Documents\\Research\\R_for_fun\\data_vis\\viridis_continuous.png")
-```
+
+![](GGplot_quarto_files/viridis_continuous_palette.png)
 
 Plotting for continuous variables
 ```{r, eval = FALSE}
@@ -705,11 +723,11 @@ smoker_insurance +
 ```
 
 ### Discrete Color Schemes
-```{r, eval = FALSE, eval = FALSE}
-knitr::include_graphics("C:\\Users\\lhodg\\Documents\\Research\\R_for_fun\\data_vis\\viridis_discrete.png")
-```
+
+![](GGplot_quarto_files/viridis_discrete_palette.png)
 
 Plotting for Discrete color schemes, make sure to set `discrete = TRUE`
+
 ```{r, fig.width=4, fig.height=3, eval = FALSE}
 ggplot(data = acadia) + 
   aes(x = Category, y = Abundance, color = Abundance) + 
