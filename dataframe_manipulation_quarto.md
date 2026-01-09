@@ -19,14 +19,12 @@
   - [`grep()` vs `grepl()`](#grep-vs-grepl)
   - [Search and return row of
     dataframe](#search-and-return-row-of-dataframe)
-  - [Multiple matches with logical
-    operators](#multiple-matches-with-logical-operators)
-- [Split verbose column into multiple with
-  `separate_wider_regex()`](#split-verbose-column-into-multiple-with-separate_wider_regex)
+- [Boolean Logic](#boolean-logic)
+- [Regex in R](#regex-in-r)
   - [Example with my sequencing data](#example-with-my-sequencing-data)
+  - [rename columns](#rename-columns)
+  - [with select()](#with-select)
 - [Combine dataframes](#combine-dataframes)
-  - [Tidyverse `cbind()`](#tidyverse-cbind)
-  - [Tidyverse `rbind()`](#tidyverse-rbind)
   - [Base R `merge()`](#base-r-merge)
   - [`bind_rows()`](#bind_rows)
 - [Changing Names with `rename_with()` and
@@ -36,8 +34,10 @@
     Names](#remove-all-numbers-from-column-names)
     - [Rename Column by Order](#rename-column-by-order)
   - [Change data in column](#change-data-in-column)
-- [random downsampling of data](#random-downsampling-of-data)
-- [Cleanup data - set NAs to 0](#cleanup-data---set-nas-to-0)
+- [Actions: subsampling rows, set NAs to 0,
+  etc.](#actions-subsampling-rows-set-nas-to-0-etc)
+  - [random downsampling of data](#random-downsampling-of-data)
+  - [Cleanup data - set NAs to 0](#cleanup-data---set-nas-to-0)
 - [Tidyverse basics](#tidyverse-basics)
   - [`mutate()` can create new column based on
     others](#mutate-can-create-new-column-based-on-others)
@@ -61,10 +61,11 @@
     dataframe](#add-column-from-dataframe-containing--1-column-to-different-dataframe)
   - [Make Dataframe from vectors](#make-dataframe-from-vectors)
   - [Add column to number groups](#add-column-to-number-groups)
-- [Boolean Logic](#boolean-logic)
 - [Special cases](#special-cases)
   - [Convert Time Series to Dataframe with `as.matrix()` and
     `data.frame()`](#convert-time-series-to-dataframe-with-asmatrix-and-dataframe)
+  - [Split verbose column into multiple with
+    `separate_wider_regex()`](#split-verbose-column-into-multiple-with-separate_wider_regex)
 
 # Quarto formatting:
 
@@ -125,7 +126,7 @@ theme_set(theme_classic()) # feel free to not use this theme if you find a diffe
 1.  if you see `%>%` in code, this is the pipe operator used in
     tidyverse. In the newest version of R (after 4.0) you can also use
     the standard pipe `|`
-2.  Most examples will be either my own or public data commonly used in
+2.  Many examples will be either my own or public data commonly used in
     R tutorials. One example of public data is the gapminder dataset
     which is loaded above with `library(gapminder)`. It contains
     demographic/economic/health information on countries from 1952-2007.
@@ -170,7 +171,7 @@ I keep a master spreadsheet with sequencing statistics for all of my NGS
 experiments:
 
 ``` r
-seqstats <- read_excel("Sequencing_Stats_260107.xlsx", 
+seqstats_excel <- read_excel("Sequencing_Stats_260107.xlsx", 
     sheet = "all_dualspike_metadata")
 ```
 
@@ -178,7 +179,7 @@ seqstats <- read_excel("Sequencing_Stats_260107.xlsx",
     • `` -> `...7`
 
 ``` r
-knitr::kable(head(seqstats))
+knitr::kable(head(seqstats_excel))
 ```
 
 | experiment ID | library ID | cell | IP | biorep | techrep | …7 | bwa hg38 -q 50 | bwa dm6 -q 50 | bwa sac3 -q 50 | dm6/sac3 | dm6/hg38 | sac3/hg38 | dm6/hg38 IP/input | sac3/hg38 IP/input | dm6/hg38 IP/input control norm | sac3/hg38 IP/input control norm | dm6 IP signal | sac3 IP signal | dm6 eff IP/input | sac3 eff IP/input | dm6 eff control norm | sac3 eff control norm | dm6 normfactor snr adj | sac3 normfactor snr adj | dual normfactor snr adj |
@@ -219,6 +220,20 @@ knitr::kable(head(TRP_input_tagLen, n = 10))
 If you use read.delim it automatically defaults `sep = "\t"`, perfect
 for tsv files.
 
+``` r
+seqstats <- read.delim("all_dualspike_metadata.tsv", sep = "\t")
+knitr::kable(head(seqstats))
+```
+
+| experiment.ID | library.ID | cell | IP | biorep | techrep | X | bwa.hg38..q.50 | bwa.dm6..q.50 | bwa.sac3..q.50 | dm6.sac3 | dm6.hg38 | sac3.hg38 | dm6.hg38.IP.input | sac3.hg38.IP.input | dm6.hg38.IP.input.control.norm | sac3.hg38.IP.input.control.norm | dm6.IP.signal | sac3.IP.signal | dm6.eff.IP.input | sac3.eff.IP.input | dm6.eff.control.norm | sac3.eff.control.norm | dm6.normfactor.snr.adj | sac3.normfactor.snr.adj | dual.normfactor.snr.adj |
+|:---|:---|:---|:---|---:|---:|:---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|:---|---:|---:|---:|
+| LP78 | HelaS3_100sync_0inter_1_H3K9ac_1 | HeLaS3 | H3K9ac | 1 | 1 | NA | 8446795 | 787637 | 3384998 | 0.233 | 0.09325 | 0.40074 | 8.253 | 50.572 | 0.9420 | 0.9265 | 22496.56 | 165939.1 | 6720.68 | 0.995 | 0.988 | 0.999 | 0.931 | 0.926 | 0.928 |
+| LP78 | HelaS3_100sync_0inter_1_H3K9ac_2 | HeLaS3 | H3K9ac | 1 | 2 | NA | 8000672 | 719513 | 3165051 | 0.227 | 0.08993 | 0.39560 | 7.959 | 49.922 | 0.9085 | 0.9146 | 22511.03 | 166041.9 | 6735.15 | 0.996 | 0.991 | 1.000 | 0.900 | 0.914 | 0.907 |
+| LP78 | HelaS3_100sync_0inter_1_H3K9ac_3 | HeLaS3 | H3K9ac | 1 | 3 | NA | 7144407 | 812865 | 3581432 | 0.227 | 0.11378 | 0.50129 | 10.070 | 63.260 | 1.1494 | 1.1589 | 22718.79 | 166251.4 | 6942.91 | 0.997 | 1.021 | 1.001 | 1.174 | 1.160 | 1.167 |
+| LP78 | HelaS3_75sync_25inter_1_H3K9ac_1 | HeLaS3 | H3K9ac | 1 | 1 | NA | 9000686 | 478856 | 2350718 | 0.204 | 0.05320 | 0.26117 | 4.963 | 34.029 | 0.5665 | 0.6234 | 22547.08 | 165787.9 | 6860.25 | 0.992 | 1.009 | 0.996 | 0.572 | 0.621 | 0.596 |
+| LP78 | HelaS3_75sync_25inter_1_H3K9ac_2 | HeLaS3 | H3K9ac | 1 | 2 | NA | 10985910 | 499861 | 2263534 | 0.221 | 0.04550 | 0.20604 | 4.245 | 26.846 | 0.4845 | 0.4918 | 22465.16 | 165797.5 | 6778.33 | 0.992 | 0.997 | 0.996 | 0.483 | 0.490 | 0.486 |
+| LP78 | HelaS3_75sync_25inter_1_H3K9ac_3 | HeLaS3 | H3K9ac | 1 | 3 | NA | 8336422 | 443340 | 2215916 | 0.200 | 0.05318 | 0.26581 | 4.961 | 34.634 | 0.5663 | 0.6345 | 22570.42 | 165843.8 | 6883.59 | 0.992 | 1.012 | 0.996 | 0.573 | 0.632 | 0.603 |
+
 # Getting Basic Information
 
 ## Basic operations:
@@ -228,12 +243,34 @@ Isolating a column by name: `seqstats$cell`
 If there are spaces in the name, use “\`”, as in
 
 ``` r
-seqstats$`experiment ID`
+seqstats_excel$`experiment ID` %>% head()
 ```
+
+    [1] "LP78" "LP78" "LP78" "LP78" "LP78" "LP78"
+
+If you use `read.delim()`, spaces are converted to periods “.” so
+
+``` r
+seqstats$experiment.ID %>% head()
+```
+
+    [1] "LP78" "LP78" "LP78" "LP78" "LP78" "LP78"
 
 Print column names: `names(seqstats)` or `colnames(seqstats)`
 
 Isolate column by position: `seqstats[1]`
+
+``` r
+seqstats[1] %>% head()
+```
+
+      experiment.ID
+    1          LP78
+    2          LP78
+    3          LP78
+    4          LP78
+    5          LP78
+    6          LP78
 
 ## Cleanup column names in Kable with `gsub()`
 
@@ -245,17 +282,17 @@ Example below replaces underscores in column names with spaces only for
 knitr::kable() to display, WITHOUT modifying the original dataset.
 
 ``` r
-knitr::kable(head(seqstats), col.names = gsub("[_]", " ", names(seqstats)))
+knitr::kable(head(seqstats), col.names = gsub("[.]", " ", names(seqstats)))
 ```
 
-| experiment ID | library ID | cell | IP | biorep | techrep | …7 | bwa hg38 -q 50 | bwa dm6 -q 50 | bwa sac3 -q 50 | dm6/sac3 | dm6/hg38 | sac3/hg38 | dm6/hg38 IP/input | sac3/hg38 IP/input | dm6/hg38 IP/input control norm | sac3/hg38 IP/input control norm | dm6 IP signal | sac3 IP signal | dm6 eff IP/input | sac3 eff IP/input | dm6 eff control norm | sac3 eff control norm | dm6 normfactor snr adj | sac3 normfactor snr adj | dual normfactor snr adj |
-|:---|:---|:---|:---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|:---|---:|---:|---:|
-| LP78 | HelaS3_100sync_0inter_1_H3K9ac_1 | HeLaS3 | H3K9ac | 1 | 1 | NA | 8446795 | 787637 | 3384998 | 0.2326846 | 0.0932468 | 0.4007435 | 8.252629 | 50.57160 | 0.9420306 | 0.9264793 | 22496.56 | 165939.1 | 6720.68 | 0.9951239 | 0.9883963 | 0.9991668547 | 0.9310996 | 0.9257074 | 0.9284035 |
-| LP78 | HelaS3_100sync_0inter_1_H3K9ac_2 | HeLaS3 | H3K9ac | 1 | 2 | NA | 8000672 | 719513 | 3165051 | 0.2273306 | 0.0899316 | 0.3955981 | 7.959218 | 49.92229 | 0.9085379 | 0.9145838 | 22511.03 | 166041.9 | 6735.15 | 0.9957404 | 0.9905244 | 0.9997858429 | 0.8999290 | 0.9143879 | 0.9071584 |
-| LP78 | HelaS3_100sync_0inter_1_H3K9ac_3 | HeLaS3 | H3K9ac | 1 | 3 | NA | 7144407 | 812865 | 3581432 | 0.2269665 | 0.1137764 | 0.5012917 | 10.069558 | 63.26023 | 1.1494315 | 1.1589369 | 22718.79 | 166251.4 | 6942.91 | 0.9969967 | 1.0210792 | 1.001047302 | 1.1736607 | 1.1601506 | 1.1669056 |
-| LP78 | HelaS3_75sync_25inter_1_H3K9ac_1 | HeLaS3 | H3K9ac | 1 | 1 | NA | 9000686 | 478856 | 2350718 | 0.2037063 | 0.0532022 | 0.2611710 | 4.963025 | 34.02945 | 0.5665250 | 0.6234247 | 22547.08 | 165787.9 | 6860.25 | 0.9915105 | 1.0089226 | 0.9955388152 | 0.5715799 | 0.6206435 | 0.5961117 |
-| LP78 | HelaS3_75sync_25inter_1_H3K9ac_2 | HeLaS3 | H3K9ac | 1 | 2 | NA | 10985910 | 499861 | 2263534 | 0.2208321 | 0.0455002 | 0.2060397 | 4.244537 | 26.84609 | 0.4845103 | 0.4918244 | 22465.16 | 165797.5 | 6778.33 | 0.9915680 | 0.9968748 | 0.9955964622 | 0.4829961 | 0.4896586 | 0.4863274 |
-| LP78 | HelaS3_75sync_25inter_1_H3K9ac_3 | HeLaS3 | H3K9ac | 1 | 3 | NA | 8336422 | 443340 | 2215916 | 0.2000708 | 0.0531811 | 0.2658114 | 4.961059 | 34.63408 | 0.5663006 | 0.6345015 | 22570.42 | 165843.8 | 6883.59 | 0.9918449 | 1.0123552 | 0.9958744888 | 0.5732973 | 0.6318839 | 0.6025906 |
+| experiment ID | library ID | cell | IP | biorep | techrep | X | bwa hg38 q 50 | bwa dm6 q 50 | bwa sac3 q 50 | dm6 sac3 | dm6 hg38 | sac3 hg38 | dm6 hg38 IP input | sac3 hg38 IP input | dm6 hg38 IP input control norm | sac3 hg38 IP input control norm | dm6 IP signal | sac3 IP signal | dm6 eff IP input | sac3 eff IP input | dm6 eff control norm | sac3 eff control norm | dm6 normfactor snr adj | sac3 normfactor snr adj | dual normfactor snr adj |
+|:---|:---|:---|:---|---:|---:|:---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|:---|---:|---:|---:|
+| LP78 | HelaS3_100sync_0inter_1_H3K9ac_1 | HeLaS3 | H3K9ac | 1 | 1 | NA | 8446795 | 787637 | 3384998 | 0.233 | 0.09325 | 0.40074 | 8.253 | 50.572 | 0.9420 | 0.9265 | 22496.56 | 165939.1 | 6720.68 | 0.995 | 0.988 | 0.999 | 0.931 | 0.926 | 0.928 |
+| LP78 | HelaS3_100sync_0inter_1_H3K9ac_2 | HeLaS3 | H3K9ac | 1 | 2 | NA | 8000672 | 719513 | 3165051 | 0.227 | 0.08993 | 0.39560 | 7.959 | 49.922 | 0.9085 | 0.9146 | 22511.03 | 166041.9 | 6735.15 | 0.996 | 0.991 | 1.000 | 0.900 | 0.914 | 0.907 |
+| LP78 | HelaS3_100sync_0inter_1_H3K9ac_3 | HeLaS3 | H3K9ac | 1 | 3 | NA | 7144407 | 812865 | 3581432 | 0.227 | 0.11378 | 0.50129 | 10.070 | 63.260 | 1.1494 | 1.1589 | 22718.79 | 166251.4 | 6942.91 | 0.997 | 1.021 | 1.001 | 1.174 | 1.160 | 1.167 |
+| LP78 | HelaS3_75sync_25inter_1_H3K9ac_1 | HeLaS3 | H3K9ac | 1 | 1 | NA | 9000686 | 478856 | 2350718 | 0.204 | 0.05320 | 0.26117 | 4.963 | 34.029 | 0.5665 | 0.6234 | 22547.08 | 165787.9 | 6860.25 | 0.992 | 1.009 | 0.996 | 0.572 | 0.621 | 0.596 |
+| LP78 | HelaS3_75sync_25inter_1_H3K9ac_2 | HeLaS3 | H3K9ac | 1 | 2 | NA | 10985910 | 499861 | 2263534 | 0.221 | 0.04550 | 0.20604 | 4.245 | 26.846 | 0.4845 | 0.4918 | 22465.16 | 165797.5 | 6778.33 | 0.992 | 0.997 | 0.996 | 0.483 | 0.490 | 0.486 |
+| LP78 | HelaS3_75sync_25inter_1_H3K9ac_3 | HeLaS3 | H3K9ac | 1 | 3 | NA | 8336422 | 443340 | 2215916 | 0.200 | 0.05318 | 0.26581 | 4.961 | 34.634 | 0.5663 | 0.6345 | 22570.42 | 165843.8 | 6883.59 | 0.992 | 1.012 | 0.996 | 0.573 | 0.632 | 0.603 |
 
 ## Variable classes
 
@@ -263,33 +300,33 @@ knitr::kable(head(seqstats), col.names = gsub("[_]", " ", names(seqstats)))
 str(seqstats)
 ```
 
-    tibble [279 × 26] (S3: tbl_df/tbl/data.frame)
-     $ experiment ID                  : chr [1:279] "LP78" "LP78" "LP78" "LP78" ...
-     $ library ID                     : chr [1:279] "HelaS3_100sync_0inter_1_H3K9ac_1" "HelaS3_100sync_0inter_1_H3K9ac_2" "HelaS3_100sync_0inter_1_H3K9ac_3" "HelaS3_75sync_25inter_1_H3K9ac_1" ...
-     $ cell                           : chr [1:279] "HeLaS3" "HeLaS3" "HeLaS3" "HeLaS3" ...
-     $ IP                             : chr [1:279] "H3K9ac" "H3K9ac" "H3K9ac" "H3K9ac" ...
-     $ biorep                         : num [1:279] 1 1 1 1 1 1 1 1 1 1 ...
-     $ techrep                        : num [1:279] 1 2 3 1 2 3 1 2 3 1 ...
-     $ ...7                           : num [1:279] NA NA NA NA NA NA NA NA NA NA ...
-     $ bwa hg38 -q 50                 : num [1:279] 8446795 8000672 7144407 9000686 10985910 ...
-     $ bwa dm6 -q 50                  : num [1:279] 787637 719513 812865 478856 499861 ...
-     $ bwa sac3 -q 50                 : num [1:279] 3384998 3165051 3581432 2350718 2263534 ...
-     $ dm6/sac3                       : num [1:279] 0.233 0.227 0.227 0.204 0.221 ...
-     $ dm6/hg38                       : num [1:279] 0.0932 0.0899 0.1138 0.0532 0.0455 ...
-     $ sac3/hg38                      : num [1:279] 0.401 0.396 0.501 0.261 0.206 ...
-     $ dm6/hg38 IP/input              : num [1:279] 8.25 7.96 10.07 4.96 4.24 ...
-     $ sac3/hg38 IP/input             : num [1:279] 50.6 49.9 63.3 34 26.8 ...
-     $ dm6/hg38 IP/input control norm : num [1:279] 0.942 0.909 1.149 0.567 0.485 ...
-     $ sac3/hg38 IP/input control norm: num [1:279] 0.926 0.915 1.159 0.623 0.492 ...
-     $ dm6 IP signal                  : num [1:279] 22497 22511 22719 22547 22465 ...
-     $ sac3 IP signal                 : num [1:279] 165939 166042 166251 165788 165798 ...
-     $ dm6 eff IP/input               : num [1:279] 6721 6735 6943 6860 6778 ...
-     $ sac3 eff IP/input              : num [1:279] 0.995 0.996 0.997 0.992 0.992 ...
-     $ dm6 eff control norm           : num [1:279] 0.988 0.991 1.021 1.009 0.997 ...
-     $ sac3 eff control norm          : chr [1:279] "0.9991668547" "0.9997858429" "1.001047302" "0.9955388152" ...
-     $ dm6 normfactor snr adj         : num [1:279] 0.931 0.9 1.174 0.572 0.483 ...
-     $ sac3 normfactor snr adj        : num [1:279] 0.926 0.914 1.16 0.621 0.49 ...
-     $ dual normfactor snr adj        : num [1:279] 0.928 0.907 1.167 0.596 0.486 ...
+    'data.frame':   199 obs. of  26 variables:
+     $ experiment.ID                  : chr  "LP78" "LP78" "LP78" "LP78" ...
+     $ library.ID                     : chr  "HelaS3_100sync_0inter_1_H3K9ac_1" "HelaS3_100sync_0inter_1_H3K9ac_2" "HelaS3_100sync_0inter_1_H3K9ac_3" "HelaS3_75sync_25inter_1_H3K9ac_1" ...
+     $ cell                           : chr  "HeLaS3" "HeLaS3" "HeLaS3" "HeLaS3" ...
+     $ IP                             : chr  "H3K9ac" "H3K9ac" "H3K9ac" "H3K9ac" ...
+     $ biorep                         : int  1 1 1 1 1 1 1 1 1 1 ...
+     $ techrep                        : num  1 2 3 1 2 3 1 2 3 1 ...
+     $ X                              : logi  NA NA NA NA NA NA ...
+     $ bwa.hg38..q.50                 : int  8446795 8000672 7144407 9000686 10985910 8336422 11129385 13553505 9924828 15148990 ...
+     $ bwa.dm6..q.50                  : int  787637 719513 812865 478856 499861 443340 416659 509021 349112 418195 ...
+     $ bwa.sac3..q.50                 : int  3384998 3165051 3581432 2350718 2263534 2215916 2308097 2532542 1631292 2170994 ...
+     $ dm6.sac3                       : num  0.233 0.227 0.227 0.204 0.221 0.2 0.181 0.201 0.214 0.193 ...
+     $ dm6.hg38                       : num  0.0932 0.0899 0.1138 0.0532 0.0455 ...
+     $ sac3.hg38                      : num  0.401 0.396 0.501 0.261 0.206 ...
+     $ dm6.hg38.IP.input              : num  8.25 7.96 10.07 4.96 4.25 ...
+     $ sac3.hg38.IP.input             : num  50.6 49.9 63.3 34 26.8 ...
+     $ dm6.hg38.IP.input.control.norm : num  0.942 0.908 1.149 0.567 0.484 ...
+     $ sac3.hg38.IP.input.control.norm: num  0.926 0.915 1.159 0.623 0.492 ...
+     $ dm6.IP.signal                  : num  22497 22511 22719 22547 22465 ...
+     $ sac3.IP.signal                 : num  165939 166042 166251 165788 165798 ...
+     $ dm6.eff.IP.input               : num  6721 6735 6943 6860 6778 ...
+     $ sac3.eff.IP.input              : num  0.995 0.996 0.997 0.992 0.992 0.992 0.989 0.992 0.991 0.989 ...
+     $ dm6.eff.control.norm           : num  0.988 0.991 1.021 1.009 0.997 ...
+     $ sac3.eff.control.norm          : chr  "0.999" "1.000" "1.001" "0.996" ...
+     $ dm6.normfactor.snr.adj         : num  0.931 0.9 1.174 0.572 0.483 ...
+     $ sac3.normfactor.snr.adj        : num  0.926 0.914 1.16 0.621 0.49 0.632 0.507 0.458 0.402 0.335 ...
+     $ dual.normfactor.snr.adj        : num  0.928 0.907 1.167 0.596 0.486 ...
 
 - fct = categorical variable (factor)
 - dbl = dibble
@@ -316,12 +353,13 @@ In the below code we are searching for:
 3.  within this dataset, the ID column
 
 ``` r
-grep("_1hr", seqstats$ID)
+grep("_1hr", seqstats$library.ID)
 ```
 
-    Warning: Unknown or uninitialised column: `ID`.
-
-    integer(0)
+     [1]  27  28  33  34  39  40  45  46  51  52  56  58  61  63  66  68  71  73  76
+    [20]  78  81  83  86  88  92  93  96  97 101 103 106 108 112 113 116 117 122 123
+    [39] 126 127 131 133 136 138 141 143 146 148 152 153 156 157 162 163 166 167 172
+    [58] 173 176 177 182 183 186 187 192 193 196 197
 
 **`grepl()`** is very similar, but instead of returining indices of the
 matches location, it returns a logical vector, with TRUE representing a
@@ -330,12 +368,26 @@ match, and FALSE if not a match
 The same example with grepl:
 
 ``` r
-grepl("_1hr", seqstats$ID)
+grepl("_1hr", seqstats$library.ID)
 ```
 
-    Warning: Unknown or uninitialised column: `ID`.
-
-    logical(0)
+      [1] FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE
+     [13] FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE
+     [25] FALSE FALSE  TRUE  TRUE FALSE FALSE FALSE FALSE  TRUE  TRUE FALSE FALSE
+     [37] FALSE FALSE  TRUE  TRUE FALSE FALSE FALSE FALSE  TRUE  TRUE FALSE FALSE
+     [49] FALSE FALSE  TRUE  TRUE FALSE FALSE FALSE  TRUE FALSE  TRUE FALSE FALSE
+     [61]  TRUE FALSE  TRUE FALSE FALSE  TRUE FALSE  TRUE FALSE FALSE  TRUE FALSE
+     [73]  TRUE FALSE FALSE  TRUE FALSE  TRUE FALSE FALSE  TRUE FALSE  TRUE FALSE
+     [85] FALSE  TRUE FALSE  TRUE FALSE FALSE FALSE  TRUE  TRUE FALSE FALSE  TRUE
+     [97]  TRUE FALSE FALSE FALSE  TRUE FALSE  TRUE FALSE FALSE  TRUE FALSE  TRUE
+    [109] FALSE FALSE FALSE  TRUE  TRUE FALSE FALSE  TRUE  TRUE FALSE FALSE FALSE
+    [121] FALSE  TRUE  TRUE FALSE FALSE  TRUE  TRUE FALSE FALSE FALSE  TRUE FALSE
+    [133]  TRUE FALSE FALSE  TRUE FALSE  TRUE FALSE FALSE  TRUE FALSE  TRUE FALSE
+    [145] FALSE  TRUE FALSE  TRUE FALSE FALSE FALSE  TRUE  TRUE FALSE FALSE  TRUE
+    [157]  TRUE FALSE FALSE FALSE FALSE  TRUE  TRUE FALSE FALSE  TRUE  TRUE FALSE
+    [169] FALSE FALSE FALSE  TRUE  TRUE FALSE FALSE  TRUE  TRUE FALSE FALSE FALSE
+    [181] FALSE  TRUE  TRUE FALSE FALSE  TRUE  TRUE FALSE FALSE FALSE FALSE  TRUE
+    [193]  TRUE FALSE FALSE  TRUE  TRUE FALSE FALSE
 
 ## Search and return row of dataframe
 
@@ -344,41 +396,66 @@ Syntax: `dataframe[grep("string", dataframe$column), ]`
 Use indexes to return row with match: works with `grep` and `grepl`
 
 ``` r
-seqstats[grep("0hr", seqstats$ID), ] %>% knitr::kable()
+seqstats[grep("0hr", seqstats$library.ID), ] %>% head() %>% knitr::kable()
 ```
 
-    Warning: Unknown or uninitialised column: `ID`.
+|  | experiment.ID | library.ID | cell | IP | biorep | techrep | X | bwa.hg38..q.50 | bwa.dm6..q.50 | bwa.sac3..q.50 | dm6.sac3 | dm6.hg38 | sac3.hg38 | dm6.hg38.IP.input | sac3.hg38.IP.input | dm6.hg38.IP.input.control.norm | sac3.hg38.IP.input.control.norm | dm6.IP.signal | sac3.IP.signal | dm6.eff.IP.input | sac3.eff.IP.input | dm6.eff.control.norm | sac3.eff.control.norm | dm6.normfactor.snr.adj | sac3.normfactor.snr.adj | dual.normfactor.snr.adj |
+|:---|:---|:---|:---|:---|---:|---:|:---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|:---|---:|---:|---:|
+| 25 | LP81 | HelaS3_TRP_0hr_1_H3K27ac_DSG-FA | HeLaS3 | H3K27ac | 1 | 1 | NA | 3526473 | 56726 | 10545850 | 0.005 | 0.01609 | 2.99048 | 6.381 | 103.438 | 0.9572 | 0.9348 | 27942.8100 | 181238.2 | 12547.3500 | 181238.2 | 0.981 | 1.001 | 0.939 | 0.935 | 0.937 |
+| 26 | LP81 | HelaS3_TRP_0hr_2_H3K27ac_DSG-FA | HeLaS3 | H3K27ac | 2 | 1 | NA | 2823944 | 56233 | 10599682 | 0.005 | 0.01991 | 3.75350 | 6.952 | 117.867 | 1.0428 | 1.0652 | 28434.9200 | 181029.8 | 13043.4600 | 181029.8 | 1.019 | 0.999 | 1.063 | 1.065 | 1.064 |
+| 31 | LP81 | HelaS3_TRP_0hr_1_H3K4me1_DSG-FA | HeLaS3 | H3K4me1 | 1 | 1 | NA | 8538628 | 760248 | 5195480 | 0.146 | 0.08904 | 0.60847 | 35.318 | 21.046 | 0.8917 | 0.9382 | 596.9912 | NA | 0.0388 | NA | 1.000 | \#DIV/0! | 0.892 | NA | 0.892 |
+| 32 | LP81 | HelaS3_TRP_0hr_2_H3K4me1_DSG-FA | HeLaS3 | H3K4me1 | 2 | 1 | NA | 8862085 | 1114426 | 6722173 | 0.166 | 0.12575 | 0.75853 | 43.901 | 23.819 | 1.1083 | 1.0618 | 596.4940 | NA | 0.0388 | NA | 1.000 | \#DIV/0! | 1.108 | NA | 1.108 |
+| 37 | LP81 | HelaS3_TRP_0hr_1_H3K4me3_DSG-FA | HeLaS3 | H3K4me3 | 1 | 1 | NA | 3476232 | 671941 | 10859461 | 0.062 | 0.19330 | 3.12392 | 76.675 | 108.054 | 0.9197 | 0.9402 | 51680.0700 | 190755.6 | 36284.6100 | 190755.6 | 1.002 | 1.000 | 0.922 | 0.940 | 0.931 |
+| 38 | LP81 | HelaS3_TRP_0hr_2_H3K4me3_DSG-FA | HeLaS3 | H3K4me3 | 2 | 1 | NA | 3019041 | 778905 | 11710955 | 0.067 | 0.25800 | 3.87903 | 90.068 | 121.809 | 1.0803 | 1.0598 | 51495.3100 | 190729.2 | 36103.8500 | 190729.2 | 0.998 | 1.000 | 1.078 | 1.060 | 1.069 |
 
-| experiment ID | library ID | cell | IP | biorep | techrep | …7 | bwa hg38 -q 50 | bwa dm6 -q 50 | bwa sac3 -q 50 | dm6/sac3 | dm6/hg38 | sac3/hg38 | dm6/hg38 IP/input | sac3/hg38 IP/input | dm6/hg38 IP/input control norm | sac3/hg38 IP/input control norm | dm6 IP signal | sac3 IP signal | dm6 eff IP/input | sac3 eff IP/input | dm6 eff control norm | sac3 eff control norm | dm6 normfactor snr adj | sac3 normfactor snr adj | dual normfactor snr adj |
-|:---|:---|:---|:---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|:---|---:|---:|---:|
+# Boolean Logic
 
-## Multiple matches with logical operators
+- !x = NOT x (everything else)
+- x & y = x AND y
+- x && y =
+- x \| y = x OR y
+- x \|\| y =
+- xor(x, y) =
+
+Example: get rows whose column `library.ID` contents matched the partial
+string `H3K36me3` OR `Rpb1`.
 
 ``` r
-seqstats[grep("69a|69e", seqstats$ID), ] %>% knitr::kable()
+seqstats[grep("H3K36me3|Rpb1", seqstats$library.ID), ] %>% head(n = 10) %>% knitr::kable()
 ```
 
-    Warning: Unknown or uninitialised column: `ID`.
+|  | experiment.ID | library.ID | cell | IP | biorep | techrep | X | bwa.hg38..q.50 | bwa.dm6..q.50 | bwa.sac3..q.50 | dm6.sac3 | dm6.hg38 | sac3.hg38 | dm6.hg38.IP.input | sac3.hg38.IP.input | dm6.hg38.IP.input.control.norm | sac3.hg38.IP.input.control.norm | dm6.IP.signal | sac3.IP.signal | dm6.eff.IP.input | sac3.eff.IP.input | dm6.eff.control.norm | sac3.eff.control.norm | dm6.normfactor.snr.adj | sac3.normfactor.snr.adj | dual.normfactor.snr.adj |
+|:---|:---|:---|:---|:---|---:|---:|:---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|:---|---:|---:|---:|
+| 49 | LP81 | HelaS3_TRP_0hr_1_Rpb1_DSG-FA | HeLaS3 | Rpb1 | 1 | 1 | NA | 11813620 | 12549 | 122904 | 0.102 | 0.00106 | 0.01040 | 0.421 | NA | 0.8991 | NA | 21433.43000 | NA | 6037.97 | NA | 1.055 |  | 0.948 | NA | 0.948 |
+| 50 | LP81 | HelaS3_TRP_0hr_2_Rpb1_DSG-FA | HeLaS3 | Rpb1 | 2 | 1 | NA | 5383291 | 7956 | 67369 | 0.118 | 0.00148 | 0.01251 | 0.516 | NA | 1.1009 | NA | 20801.62000 | NA | 5410.16 | NA | 0.945 |  | 1.041 | NA | 1.041 |
+| 51 | LP81 | HelaS3_TRP_1hr_1_Rpb1_DSG-FA | HeLaS3 | Rpb1 | 1 | 1 | NA | 5027345 | 18036 | 132006 | 0.137 | 0.00359 | 0.02626 | 1.131 | NA | 2.4126 | NA | 19707.93000 | NA | 4422.62 | NA | 0.773 |  | 1.864 | NA | 1.864 |
+| 52 | LP81 | HelaS3_TRP_1hr_2_Rpb1_DSG-FA | HeLaS3 | Rpb1 | 2 | 1 | NA | 4549165 | 10217 | 133292 | 0.077 | 0.00225 | 0.02930 | 0.817 | NA | 1.7425 | NA | 22460.57000 | NA | 6930.54 | NA | 1.211 |  | 2.110 | NA | 2.110 |
+| 53 | LP81 | HelaS3_TRP_4hr_1_Rpb1_DSG-FA | HeLaS3 | Rpb1 | 1 | 1 | NA | 5077412 | 15491 | 191187 | 0.081 | 0.00305 | 0.03765 | 0.845 | NA | 1.8032 | NA | 21176.91000 | NA | 5471.54 | NA | 0.956 |  | 1.724 | NA | 1.724 |
+| 54 | LP81 | HelaS3_TRP_4hr_2_Rpb1_DSG-FA | HeLaS3 | Rpb1 | 2 | 1 | NA | 2239773 | 14461 | 237312 | 0.061 | 0.00646 | 0.10595 | 1.920 | NA | 4.0974 | NA | 22284.58000 | NA | 6647.42 | NA | 1.161 |  | 4.758 | NA | 4.758 |
+| 70 | LP88 | HCT116_DMSO_0hr_1_Rpb1_1 | HCT116-Rpb1 | H3K4me3 | 1 | 1 | NA | 23252966 | 52648 | 2848 | 18.486 | 0.00226 | 0.00012 | 0.320 | 0.048 | 1.0000 | NA | 69.05311 | NA | 1.53 | NA | 1.000 |  | 1.000 | NA | 1.000 |
+| 71 | LP88 | HCT116_TRP_1hr_1_Rpb1_1 | HCT116-Rpb1 | H3K4me3 | 1 | 1 | NA | 12225783 | 72691 | 2711 | 26.813 | 0.00595 | 0.00022 | 0.813 | 0.066 | 2.5400 | NA | 64.33036 | NA | 1.42 | NA | 0.928 |  | 2.358 | NA | 2.358 |
+| 72 | LP88 | HCT116_TRP_4hr_1_Rpb1_1 | HCT116-Rpb1 | H3K4me3 | 1 | 1 | NA | 8340865 | 147207 | 19465 | 7.563 | 0.01765 | 0.00233 | 2.323 | 0.811 | 7.2567 | NA | 56.79567 | NA | 1.26 | NA | 0.822 |  | 5.962 | NA | 5.962 |
+| 73 | LP88 | HCT116_IAA_1hr_1_Rpb1_1 | HCT116-Rpb1 | H3K4me3 | 1 | 1 | NA | 11004948 | 127128 | 2334 | 54.468 | 0.01155 | 0.00021 | 1.263 | 0.067 | 3.9453 | NA | 55.01261 | NA | 1.19 | NA | 0.778 |  | 3.070 | NA | 3.070 |
 
-| experiment ID | library ID | cell | IP | biorep | techrep | …7 | bwa hg38 -q 50 | bwa dm6 -q 50 | bwa sac3 -q 50 | dm6/sac3 | dm6/hg38 | sac3/hg38 | dm6/hg38 IP/input | sac3/hg38 IP/input | dm6/hg38 IP/input control norm | sac3/hg38 IP/input control norm | dm6 IP signal | sac3 IP signal | dm6 eff IP/input | sac3 eff IP/input | dm6 eff control norm | sac3 eff control norm | dm6 normfactor snr adj | sac3 normfactor snr adj | dual normfactor snr adj |
-|:---|:---|:---|:---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|:---|---:|---:|---:|
-
-# Split verbose column into multiple with `separate_wider_regex()`
-
-Using `separate_wider_regex()` from tidyr package, info here:
-https://tidyr.tidyverse.org/reference/separate_wider_delim.html
-
-Syntax:
+For AND matches, we need to modify the notation, as
+`grep("DMSO&Rpb1", ...)` will only find a match if there is a library ID
+that contains the continuous string “DMSO Rpb1” in that exact order.
+Also, `grep` will not work, we need `grepl`. We need to do:
 
 ``` r
-dataframe %>% separate_wider_regex(
-  cols = columntosplit, 
-  patterns = c(
-    newcol1 = "regex",
-    "regex", #if you want to discard anything between columns
-    newcol2 = "regex"
-  ))
+seqstats[grepl("DMSO", seqstats$library.ID) & grepl("Rpb1", seqstats$library.ID), ] %>% 
+  head() %>% knitr::kable()
 ```
+
+|  | experiment.ID | library.ID | cell | IP | biorep | techrep | X | bwa.hg38..q.50 | bwa.dm6..q.50 | bwa.sac3..q.50 | dm6.sac3 | dm6.hg38 | sac3.hg38 | dm6.hg38.IP.input | sac3.hg38.IP.input | dm6.hg38.IP.input.control.norm | sac3.hg38.IP.input.control.norm | dm6.IP.signal | sac3.IP.signal | dm6.eff.IP.input | sac3.eff.IP.input | dm6.eff.control.norm | sac3.eff.control.norm | dm6.normfactor.snr.adj | sac3.normfactor.snr.adj | dual.normfactor.snr.adj |
+|:---|:---|:---|:---|:---|---:|---:|:---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|:---|---:|---:|---:|
+| 70 | LP88 | HCT116_DMSO_0hr_1_Rpb1_1 | HCT116-Rpb1 | H3K4me3 | 1 | 1 | NA | 23252966 | 52648 | 2848 | 18.486 | 0.00226 | 0.00012 | 0.320 | 0.048 | 1.0000 | NA | 69.05311 | NA | 1.53 | NA | 1.000 |  | 1.0000 | NA | 1.0000 |
+| 120 | LP91 | HCT116_DMSO_0hr_2_Rpb1_1 | HCT116-Rpb1 | Rpb1 | 2 | 1 | NA | 8057207 | 8906 | 827 | 10.769 | 0.00111 | 0.00010 | 0.066 | 0.077 | 0.7286 | 0.7579 | 6669.26100 | NA | 1.03 | NA | 1.013 |  | 0.7380 | NA | 0.7380 |
+| 121 | LP91 | HCT116_DMSO_0hr_2_Rpb1_2 | HCT116-Rpb1 | Rpb1 | 2 | 2 | NA | 7953774 | 15343 | 1338 | 11.467 | 0.00193 | 0.00017 | 0.116 | 0.127 | 1.2714 | 1.2421 | 6504.36400 | NA | 1.01 | NA | 0.987 |  | 1.2560 | NA | 1.2560 |
+| 190 | LP95 | HCT116_DMSO_0hr_3_Rpb1_1 | HCT116-Rpb1 | Rpb1 | 3 | 1 | NA | 4807836 | 67749 | 1088 | 62.269 | 0.01409 | 0.00023 | 1.409 | 0.042 | 0.9294 | 1.3448 | 8170.40000 | NA | 1.28 | NA | 1.068 |  | 0.9923 | NA | 0.9923 |
+| 191 | LP95 | HCT116_DMSO_0hr_4_Rpb1_1 | HCT116-Rpb1 | Rpb1 | 4 | 1 | NA | 4852590 | 110428 | 712 | 155.096 | 0.02276 | 0.00015 | 1.623 | 0.021 | 1.0706 | 0.6552 | 7270.40200 | NA | 1.12 | NA | 0.926 |  | 0.9915 | NA | 0.9915 |
+
+# Regex in R
 
 Regex:
 
@@ -390,8 +467,17 @@ Regex:
 - \[\[:alnum:\]\] = letters and numbers
 - \[\[:graph:\]\] = any character but not white space/blank
 
-Special: `+` goes after a match, means it can be counted more than once!
-Useful instead of denoting `[:digit:][:digit:]` for a two digit number
+Special options:
+
+- `+` goes after a match, means it can be counted more than once! Useful
+  instead of denoting `[:digit:][:digit:]` for a two digit number
+- `\` escapes any special character that otherwise has a meaning in
+  regex. For example, a period usually means any character, but if
+  preceeeded by `\` as in `\.` only a literal “.” will match
+
+More complicated examples:
+
+`\.+\.` will match any string between two periods
 
 ## Example with my sequencing data
 
@@ -404,20 +490,95 @@ sheet before sequencing:
 knitr::kable(head(seqstats))
 ```
 
-| experiment ID | library ID | cell | IP | biorep | techrep | …7 | bwa hg38 -q 50 | bwa dm6 -q 50 | bwa sac3 -q 50 | dm6/sac3 | dm6/hg38 | sac3/hg38 | dm6/hg38 IP/input | sac3/hg38 IP/input | dm6/hg38 IP/input control norm | sac3/hg38 IP/input control norm | dm6 IP signal | sac3 IP signal | dm6 eff IP/input | sac3 eff IP/input | dm6 eff control norm | sac3 eff control norm | dm6 normfactor snr adj | sac3 normfactor snr adj | dual normfactor snr adj |
-|:---|:---|:---|:---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|:---|---:|---:|---:|
-| LP78 | HelaS3_100sync_0inter_1_H3K9ac_1 | HeLaS3 | H3K9ac | 1 | 1 | NA | 8446795 | 787637 | 3384998 | 0.2326846 | 0.0932468 | 0.4007435 | 8.252629 | 50.57160 | 0.9420306 | 0.9264793 | 22496.56 | 165939.1 | 6720.68 | 0.9951239 | 0.9883963 | 0.9991668547 | 0.9310996 | 0.9257074 | 0.9284035 |
-| LP78 | HelaS3_100sync_0inter_1_H3K9ac_2 | HeLaS3 | H3K9ac | 1 | 2 | NA | 8000672 | 719513 | 3165051 | 0.2273306 | 0.0899316 | 0.3955981 | 7.959218 | 49.92229 | 0.9085379 | 0.9145838 | 22511.03 | 166041.9 | 6735.15 | 0.9957404 | 0.9905244 | 0.9997858429 | 0.8999290 | 0.9143879 | 0.9071584 |
-| LP78 | HelaS3_100sync_0inter_1_H3K9ac_3 | HeLaS3 | H3K9ac | 1 | 3 | NA | 7144407 | 812865 | 3581432 | 0.2269665 | 0.1137764 | 0.5012917 | 10.069558 | 63.26023 | 1.1494315 | 1.1589369 | 22718.79 | 166251.4 | 6942.91 | 0.9969967 | 1.0210792 | 1.001047302 | 1.1736607 | 1.1601506 | 1.1669056 |
-| LP78 | HelaS3_75sync_25inter_1_H3K9ac_1 | HeLaS3 | H3K9ac | 1 | 1 | NA | 9000686 | 478856 | 2350718 | 0.2037063 | 0.0532022 | 0.2611710 | 4.963025 | 34.02945 | 0.5665250 | 0.6234247 | 22547.08 | 165787.9 | 6860.25 | 0.9915105 | 1.0089226 | 0.9955388152 | 0.5715799 | 0.6206435 | 0.5961117 |
-| LP78 | HelaS3_75sync_25inter_1_H3K9ac_2 | HeLaS3 | H3K9ac | 1 | 2 | NA | 10985910 | 499861 | 2263534 | 0.2208321 | 0.0455002 | 0.2060397 | 4.244537 | 26.84609 | 0.4845103 | 0.4918244 | 22465.16 | 165797.5 | 6778.33 | 0.9915680 | 0.9968748 | 0.9955964622 | 0.4829961 | 0.4896586 | 0.4863274 |
-| LP78 | HelaS3_75sync_25inter_1_H3K9ac_3 | HeLaS3 | H3K9ac | 1 | 3 | NA | 8336422 | 443340 | 2215916 | 0.2000708 | 0.0531811 | 0.2658114 | 4.961059 | 34.63408 | 0.5663006 | 0.6345015 | 22570.42 | 165843.8 | 6883.59 | 0.9918449 | 1.0123552 | 0.9958744888 | 0.5732973 | 0.6318839 | 0.6025906 |
+| experiment.ID | library.ID | cell | IP | biorep | techrep | X | bwa.hg38..q.50 | bwa.dm6..q.50 | bwa.sac3..q.50 | dm6.sac3 | dm6.hg38 | sac3.hg38 | dm6.hg38.IP.input | sac3.hg38.IP.input | dm6.hg38.IP.input.control.norm | sac3.hg38.IP.input.control.norm | dm6.IP.signal | sac3.IP.signal | dm6.eff.IP.input | sac3.eff.IP.input | dm6.eff.control.norm | sac3.eff.control.norm | dm6.normfactor.snr.adj | sac3.normfactor.snr.adj | dual.normfactor.snr.adj |
+|:---|:---|:---|:---|---:|---:|:---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|:---|---:|---:|---:|
+| LP78 | HelaS3_100sync_0inter_1_H3K9ac_1 | HeLaS3 | H3K9ac | 1 | 1 | NA | 8446795 | 787637 | 3384998 | 0.233 | 0.09325 | 0.40074 | 8.253 | 50.572 | 0.9420 | 0.9265 | 22496.56 | 165939.1 | 6720.68 | 0.995 | 0.988 | 0.999 | 0.931 | 0.926 | 0.928 |
+| LP78 | HelaS3_100sync_0inter_1_H3K9ac_2 | HeLaS3 | H3K9ac | 1 | 2 | NA | 8000672 | 719513 | 3165051 | 0.227 | 0.08993 | 0.39560 | 7.959 | 49.922 | 0.9085 | 0.9146 | 22511.03 | 166041.9 | 6735.15 | 0.996 | 0.991 | 1.000 | 0.900 | 0.914 | 0.907 |
+| LP78 | HelaS3_100sync_0inter_1_H3K9ac_3 | HeLaS3 | H3K9ac | 1 | 3 | NA | 7144407 | 812865 | 3581432 | 0.227 | 0.11378 | 0.50129 | 10.070 | 63.260 | 1.1494 | 1.1589 | 22718.79 | 166251.4 | 6942.91 | 0.997 | 1.021 | 1.001 | 1.174 | 1.160 | 1.167 |
+| LP78 | HelaS3_75sync_25inter_1_H3K9ac_1 | HeLaS3 | H3K9ac | 1 | 1 | NA | 9000686 | 478856 | 2350718 | 0.204 | 0.05320 | 0.26117 | 4.963 | 34.029 | 0.5665 | 0.6234 | 22547.08 | 165787.9 | 6860.25 | 0.992 | 1.009 | 0.996 | 0.572 | 0.621 | 0.596 |
+| LP78 | HelaS3_75sync_25inter_1_H3K9ac_2 | HeLaS3 | H3K9ac | 1 | 2 | NA | 10985910 | 499861 | 2263534 | 0.221 | 0.04550 | 0.20604 | 4.245 | 26.846 | 0.4845 | 0.4918 | 22465.16 | 165797.5 | 6778.33 | 0.992 | 0.997 | 0.996 | 0.483 | 0.490 | 0.486 |
+| LP78 | HelaS3_75sync_25inter_1_H3K9ac_3 | HeLaS3 | H3K9ac | 1 | 3 | NA | 8336422 | 443340 | 2215916 | 0.200 | 0.05318 | 0.26581 | 4.961 | 34.634 | 0.5663 | 0.6345 | 22570.42 | 165843.8 | 6883.59 | 0.992 | 1.012 | 0.996 | 0.573 | 0.632 | 0.603 |
+
+## rename columns
+
+`gsub` is similar to find/replace in most applications.
+
+Below, I am replacing “.q.50” with “MAPQ_50_cutoff”, but ONLY if the
+column name also contains the string “bwa”.
+
+``` r
+seqstats %>% 
+    rename_with(~ gsub(".q.50", "MAPQ_50_cutoff", .x), contains("bwa")) %>% head() %>% knitr::kable()
+```
+
+| experiment.ID | library.ID | cell | IP | biorep | techrep | X | bwa.hg38.MAPQ_50_cutoff | bwa.dm6.MAPQ_50_cutoff | bwa.sac3.MAPQ_50_cutoff | dm6.sac3 | dm6.hg38 | sac3.hg38 | dm6.hg38.IP.input | sac3.hg38.IP.input | dm6.hg38.IP.input.control.norm | sac3.hg38.IP.input.control.norm | dm6.IP.signal | sac3.IP.signal | dm6.eff.IP.input | sac3.eff.IP.input | dm6.eff.control.norm | sac3.eff.control.norm | dm6.normfactor.snr.adj | sac3.normfactor.snr.adj | dual.normfactor.snr.adj |
+|:---|:---|:---|:---|---:|---:|:---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|:---|---:|---:|---:|
+| LP78 | HelaS3_100sync_0inter_1_H3K9ac_1 | HeLaS3 | H3K9ac | 1 | 1 | NA | 8446795 | 787637 | 3384998 | 0.233 | 0.09325 | 0.40074 | 8.253 | 50.572 | 0.9420 | 0.9265 | 22496.56 | 165939.1 | 6720.68 | 0.995 | 0.988 | 0.999 | 0.931 | 0.926 | 0.928 |
+| LP78 | HelaS3_100sync_0inter_1_H3K9ac_2 | HeLaS3 | H3K9ac | 1 | 2 | NA | 8000672 | 719513 | 3165051 | 0.227 | 0.08993 | 0.39560 | 7.959 | 49.922 | 0.9085 | 0.9146 | 22511.03 | 166041.9 | 6735.15 | 0.996 | 0.991 | 1.000 | 0.900 | 0.914 | 0.907 |
+| LP78 | HelaS3_100sync_0inter_1_H3K9ac_3 | HeLaS3 | H3K9ac | 1 | 3 | NA | 7144407 | 812865 | 3581432 | 0.227 | 0.11378 | 0.50129 | 10.070 | 63.260 | 1.1494 | 1.1589 | 22718.79 | 166251.4 | 6942.91 | 0.997 | 1.021 | 1.001 | 1.174 | 1.160 | 1.167 |
+| LP78 | HelaS3_75sync_25inter_1_H3K9ac_1 | HeLaS3 | H3K9ac | 1 | 1 | NA | 9000686 | 478856 | 2350718 | 0.204 | 0.05320 | 0.26117 | 4.963 | 34.029 | 0.5665 | 0.6234 | 22547.08 | 165787.9 | 6860.25 | 0.992 | 1.009 | 0.996 | 0.572 | 0.621 | 0.596 |
+| LP78 | HelaS3_75sync_25inter_1_H3K9ac_2 | HeLaS3 | H3K9ac | 1 | 2 | NA | 10985910 | 499861 | 2263534 | 0.221 | 0.04550 | 0.20604 | 4.245 | 26.846 | 0.4845 | 0.4918 | 22465.16 | 165797.5 | 6778.33 | 0.992 | 0.997 | 0.996 | 0.483 | 0.490 | 0.486 |
+| LP78 | HelaS3_75sync_25inter_1_H3K9ac_3 | HeLaS3 | H3K9ac | 1 | 3 | NA | 8336422 | 443340 | 2215916 | 0.200 | 0.05318 | 0.26581 | 4.961 | 34.634 | 0.5663 | 0.6345 | 22570.42 | 165843.8 | 6883.59 | 0.992 | 1.012 | 0.996 | 0.573 | 0.632 | 0.603 |
+
+``` r
+seqstats %>% 
+  rename_with(~ gsub("cell", "new_cell", .x), contains("cell")) %>% head() %>% knitr::kable()
+```
+
+| experiment.ID | library.ID | new_cell | IP | biorep | techrep | X | bwa.hg38..q.50 | bwa.dm6..q.50 | bwa.sac3..q.50 | dm6.sac3 | dm6.hg38 | sac3.hg38 | dm6.hg38.IP.input | sac3.hg38.IP.input | dm6.hg38.IP.input.control.norm | sac3.hg38.IP.input.control.norm | dm6.IP.signal | sac3.IP.signal | dm6.eff.IP.input | sac3.eff.IP.input | dm6.eff.control.norm | sac3.eff.control.norm | dm6.normfactor.snr.adj | sac3.normfactor.snr.adj | dual.normfactor.snr.adj |
+|:---|:---|:---|:---|---:|---:|:---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|:---|---:|---:|---:|
+| LP78 | HelaS3_100sync_0inter_1_H3K9ac_1 | HeLaS3 | H3K9ac | 1 | 1 | NA | 8446795 | 787637 | 3384998 | 0.233 | 0.09325 | 0.40074 | 8.253 | 50.572 | 0.9420 | 0.9265 | 22496.56 | 165939.1 | 6720.68 | 0.995 | 0.988 | 0.999 | 0.931 | 0.926 | 0.928 |
+| LP78 | HelaS3_100sync_0inter_1_H3K9ac_2 | HeLaS3 | H3K9ac | 1 | 2 | NA | 8000672 | 719513 | 3165051 | 0.227 | 0.08993 | 0.39560 | 7.959 | 49.922 | 0.9085 | 0.9146 | 22511.03 | 166041.9 | 6735.15 | 0.996 | 0.991 | 1.000 | 0.900 | 0.914 | 0.907 |
+| LP78 | HelaS3_100sync_0inter_1_H3K9ac_3 | HeLaS3 | H3K9ac | 1 | 3 | NA | 7144407 | 812865 | 3581432 | 0.227 | 0.11378 | 0.50129 | 10.070 | 63.260 | 1.1494 | 1.1589 | 22718.79 | 166251.4 | 6942.91 | 0.997 | 1.021 | 1.001 | 1.174 | 1.160 | 1.167 |
+| LP78 | HelaS3_75sync_25inter_1_H3K9ac_1 | HeLaS3 | H3K9ac | 1 | 1 | NA | 9000686 | 478856 | 2350718 | 0.204 | 0.05320 | 0.26117 | 4.963 | 34.029 | 0.5665 | 0.6234 | 22547.08 | 165787.9 | 6860.25 | 0.992 | 1.009 | 0.996 | 0.572 | 0.621 | 0.596 |
+| LP78 | HelaS3_75sync_25inter_1_H3K9ac_2 | HeLaS3 | H3K9ac | 1 | 2 | NA | 10985910 | 499861 | 2263534 | 0.221 | 0.04550 | 0.20604 | 4.245 | 26.846 | 0.4845 | 0.4918 | 22465.16 | 165797.5 | 6778.33 | 0.992 | 0.997 | 0.996 | 0.483 | 0.490 | 0.486 |
+| LP78 | HelaS3_75sync_25inter_1_H3K9ac_3 | HeLaS3 | H3K9ac | 1 | 3 | NA | 8336422 | 443340 | 2215916 | 0.200 | 0.05318 | 0.26581 | 4.961 | 34.634 | 0.5663 | 0.6345 | 22570.42 | 165843.8 | 6883.59 | 0.992 | 1.012 | 0.996 | 0.573 | 0.632 | 0.603 |
+
+## with select()
+
+``` r
+seqstats %>%
+  select(matches(".+")) %>% head() %>% knitr::kable()
+```
+
+| experiment.ID | library.ID | cell | IP | biorep | techrep | X | bwa.hg38..q.50 | bwa.dm6..q.50 | bwa.sac3..q.50 | dm6.sac3 | dm6.hg38 | sac3.hg38 | dm6.hg38.IP.input | sac3.hg38.IP.input | dm6.hg38.IP.input.control.norm | sac3.hg38.IP.input.control.norm | dm6.IP.signal | sac3.IP.signal | dm6.eff.IP.input | sac3.eff.IP.input | dm6.eff.control.norm | sac3.eff.control.norm | dm6.normfactor.snr.adj | sac3.normfactor.snr.adj | dual.normfactor.snr.adj |
+|:---|:---|:---|:---|---:|---:|:---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|:---|---:|---:|---:|
+| LP78 | HelaS3_100sync_0inter_1_H3K9ac_1 | HeLaS3 | H3K9ac | 1 | 1 | NA | 8446795 | 787637 | 3384998 | 0.233 | 0.09325 | 0.40074 | 8.253 | 50.572 | 0.9420 | 0.9265 | 22496.56 | 165939.1 | 6720.68 | 0.995 | 0.988 | 0.999 | 0.931 | 0.926 | 0.928 |
+| LP78 | HelaS3_100sync_0inter_1_H3K9ac_2 | HeLaS3 | H3K9ac | 1 | 2 | NA | 8000672 | 719513 | 3165051 | 0.227 | 0.08993 | 0.39560 | 7.959 | 49.922 | 0.9085 | 0.9146 | 22511.03 | 166041.9 | 6735.15 | 0.996 | 0.991 | 1.000 | 0.900 | 0.914 | 0.907 |
+| LP78 | HelaS3_100sync_0inter_1_H3K9ac_3 | HeLaS3 | H3K9ac | 1 | 3 | NA | 7144407 | 812865 | 3581432 | 0.227 | 0.11378 | 0.50129 | 10.070 | 63.260 | 1.1494 | 1.1589 | 22718.79 | 166251.4 | 6942.91 | 0.997 | 1.021 | 1.001 | 1.174 | 1.160 | 1.167 |
+| LP78 | HelaS3_75sync_25inter_1_H3K9ac_1 | HeLaS3 | H3K9ac | 1 | 1 | NA | 9000686 | 478856 | 2350718 | 0.204 | 0.05320 | 0.26117 | 4.963 | 34.029 | 0.5665 | 0.6234 | 22547.08 | 165787.9 | 6860.25 | 0.992 | 1.009 | 0.996 | 0.572 | 0.621 | 0.596 |
+| LP78 | HelaS3_75sync_25inter_1_H3K9ac_2 | HeLaS3 | H3K9ac | 1 | 2 | NA | 10985910 | 499861 | 2263534 | 0.221 | 0.04550 | 0.20604 | 4.245 | 26.846 | 0.4845 | 0.4918 | 22465.16 | 165797.5 | 6778.33 | 0.992 | 0.997 | 0.996 | 0.483 | 0.490 | 0.486 |
+| LP78 | HelaS3_75sync_25inter_1_H3K9ac_3 | HeLaS3 | H3K9ac | 1 | 3 | NA | 8336422 | 443340 | 2215916 | 0.200 | 0.05318 | 0.26581 | 4.961 | 34.634 | 0.5663 | 0.6345 | 22570.42 | 165843.8 | 6883.59 | 0.992 | 1.012 | 0.996 | 0.573 | 0.632 | 0.603 |
+
+``` r
+seqstats %>%
+  select(matches("[:alpha:]")) %>% head() %>% knitr::kable()
+```
+
+| experiment.ID | library.ID | cell | IP | biorep | techrep | bwa.hg38..q.50 | bwa.dm6..q.50 | bwa.sac3..q.50 | dm6.sac3 | dm6.hg38 | sac3.hg38 | dm6.hg38.IP.input | sac3.hg38.IP.input | dm6.hg38.IP.input.control.norm | sac3.hg38.IP.input.control.norm | dm6.IP.signal | sac3.IP.signal | dm6.eff.IP.input | sac3.eff.IP.input | dm6.eff.control.norm | sac3.eff.control.norm | dm6.normfactor.snr.adj | sac3.normfactor.snr.adj | dual.normfactor.snr.adj |
+|:---|:---|:---|:---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|:---|---:|---:|---:|
+| LP78 | HelaS3_100sync_0inter_1_H3K9ac_1 | HeLaS3 | H3K9ac | 1 | 1 | 8446795 | 787637 | 3384998 | 0.233 | 0.09325 | 0.40074 | 8.253 | 50.572 | 0.9420 | 0.9265 | 22496.56 | 165939.1 | 6720.68 | 0.995 | 0.988 | 0.999 | 0.931 | 0.926 | 0.928 |
+| LP78 | HelaS3_100sync_0inter_1_H3K9ac_2 | HeLaS3 | H3K9ac | 1 | 2 | 8000672 | 719513 | 3165051 | 0.227 | 0.08993 | 0.39560 | 7.959 | 49.922 | 0.9085 | 0.9146 | 22511.03 | 166041.9 | 6735.15 | 0.996 | 0.991 | 1.000 | 0.900 | 0.914 | 0.907 |
+| LP78 | HelaS3_100sync_0inter_1_H3K9ac_3 | HeLaS3 | H3K9ac | 1 | 3 | 7144407 | 812865 | 3581432 | 0.227 | 0.11378 | 0.50129 | 10.070 | 63.260 | 1.1494 | 1.1589 | 22718.79 | 166251.4 | 6942.91 | 0.997 | 1.021 | 1.001 | 1.174 | 1.160 | 1.167 |
+| LP78 | HelaS3_75sync_25inter_1_H3K9ac_1 | HeLaS3 | H3K9ac | 1 | 1 | 9000686 | 478856 | 2350718 | 0.204 | 0.05320 | 0.26117 | 4.963 | 34.029 | 0.5665 | 0.6234 | 22547.08 | 165787.9 | 6860.25 | 0.992 | 1.009 | 0.996 | 0.572 | 0.621 | 0.596 |
+| LP78 | HelaS3_75sync_25inter_1_H3K9ac_2 | HeLaS3 | H3K9ac | 1 | 2 | 10985910 | 499861 | 2263534 | 0.221 | 0.04550 | 0.20604 | 4.245 | 26.846 | 0.4845 | 0.4918 | 22465.16 | 165797.5 | 6778.33 | 0.992 | 0.997 | 0.996 | 0.483 | 0.490 | 0.486 |
+| LP78 | HelaS3_75sync_25inter_1_H3K9ac_3 | HeLaS3 | H3K9ac | 1 | 3 | 8336422 | 443340 | 2215916 | 0.200 | 0.05318 | 0.26581 | 4.961 | 34.634 | 0.5663 | 0.6345 | 22570.42 | 165843.8 | 6883.59 | 0.992 | 1.012 | 0.996 | 0.573 | 0.632 | 0.603 |
+
+``` r
+seqstats %>%
+  select(matches("[:digit:]")) %>% head() %>% knitr::kable()
+```
+
+| experiment.ID | library.ID | IP | biorep | techrep | bwa.hg38..q.50 | bwa.dm6..q.50 | dm6.sac3 | dm6.hg38 | sac3.hg38 | dm6.hg38.IP.input | sac3.hg38.IP.input | dm6.hg38.IP.input.control.norm | sac3.hg38.IP.input.control.norm | dm6.IP.signal | sac3.IP.signal | dm6.eff.IP.input | sac3.eff.IP.input | dm6.eff.control.norm | sac3.eff.control.norm | dm6.normfactor.snr.adj | sac3.normfactor.snr.adj | dual.normfactor.snr.adj |
+|:---|:---|:---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|:---|---:|---:|---:|
+| LP78 | HelaS3_100sync_0inter_1_H3K9ac_1 | H3K9ac | 1 | 1 | 8446795 | 787637 | 0.233 | 0.09325 | 0.40074 | 8.253 | 50.572 | 0.9420 | 0.9265 | 22496.56 | 165939.1 | 6720.68 | 0.995 | 0.988 | 0.999 | 0.931 | 0.926 | 0.928 |
+| LP78 | HelaS3_100sync_0inter_1_H3K9ac_2 | H3K9ac | 1 | 2 | 8000672 | 719513 | 0.227 | 0.08993 | 0.39560 | 7.959 | 49.922 | 0.9085 | 0.9146 | 22511.03 | 166041.9 | 6735.15 | 0.996 | 0.991 | 1.000 | 0.900 | 0.914 | 0.907 |
+| LP78 | HelaS3_100sync_0inter_1_H3K9ac_3 | H3K9ac | 1 | 3 | 7144407 | 812865 | 0.227 | 0.11378 | 0.50129 | 10.070 | 63.260 | 1.1494 | 1.1589 | 22718.79 | 166251.4 | 6942.91 | 0.997 | 1.021 | 1.001 | 1.174 | 1.160 | 1.167 |
+| LP78 | HelaS3_75sync_25inter_1_H3K9ac_1 | H3K9ac | 1 | 1 | 9000686 | 478856 | 0.204 | 0.05320 | 0.26117 | 4.963 | 34.029 | 0.5665 | 0.6234 | 22547.08 | 165787.9 | 6860.25 | 0.992 | 1.009 | 0.996 | 0.572 | 0.621 | 0.596 |
+| LP78 | HelaS3_75sync_25inter_1_H3K9ac_2 | H3K9ac | 1 | 2 | 10985910 | 499861 | 0.221 | 0.04550 | 0.20604 | 4.245 | 26.846 | 0.4845 | 0.4918 | 22465.16 | 165797.5 | 6778.33 | 0.992 | 0.997 | 0.996 | 0.483 | 0.490 | 0.486 |
+| LP78 | HelaS3_75sync_25inter_1_H3K9ac_3 | H3K9ac | 1 | 3 | 8336422 | 443340 | 0.200 | 0.05318 | 0.26581 | 4.961 | 34.634 | 0.5663 | 0.6345 | 22570.42 | 165843.8 | 6883.59 | 0.992 | 1.012 | 0.996 | 0.573 | 0.632 | 0.603 |
 
 # Combine dataframes
-
-## Tidyverse `cbind()`
-
-## Tidyverse `rbind()`
 
 ## Base R `merge()`
 
@@ -441,6 +602,8 @@ Copied from above:
 ``` r
 seqstats <- bind_rows(seqstats, new_data)
 ```
+
+See Tidyverse for `cbind()` and `rbind()`
 
 # Changing Names with `rename_with()` and `gsub()`
 
@@ -474,14 +637,14 @@ Before:
 seqstats %>% head() %>% knitr::kable()
 ```
 
-| experiment ID | library ID | cell | IP | biorep | techrep | …7 | bwa hg38 -q 50 | bwa dm6 -q 50 | bwa sac3 -q 50 | dm6/sac3 | dm6/hg38 | sac3/hg38 | dm6/hg38 IP/input | sac3/hg38 IP/input | dm6/hg38 IP/input control norm | sac3/hg38 IP/input control norm | dm6 IP signal | sac3 IP signal | dm6 eff IP/input | sac3 eff IP/input | dm6 eff control norm | sac3 eff control norm | dm6 normfactor snr adj | sac3 normfactor snr adj | dual normfactor snr adj |
-|:---|:---|:---|:---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|:---|---:|---:|---:|
-| LP78 | HelaS3_100sync_0inter_1_H3K9ac_1 | HeLaS3 | H3K9ac | 1 | 1 | NA | 8446795 | 787637 | 3384998 | 0.2326846 | 0.0932468 | 0.4007435 | 8.252629 | 50.57160 | 0.9420306 | 0.9264793 | 22496.56 | 165939.1 | 6720.68 | 0.9951239 | 0.9883963 | 0.9991668547 | 0.9310996 | 0.9257074 | 0.9284035 |
-| LP78 | HelaS3_100sync_0inter_1_H3K9ac_2 | HeLaS3 | H3K9ac | 1 | 2 | NA | 8000672 | 719513 | 3165051 | 0.2273306 | 0.0899316 | 0.3955981 | 7.959218 | 49.92229 | 0.9085379 | 0.9145838 | 22511.03 | 166041.9 | 6735.15 | 0.9957404 | 0.9905244 | 0.9997858429 | 0.8999290 | 0.9143879 | 0.9071584 |
-| LP78 | HelaS3_100sync_0inter_1_H3K9ac_3 | HeLaS3 | H3K9ac | 1 | 3 | NA | 7144407 | 812865 | 3581432 | 0.2269665 | 0.1137764 | 0.5012917 | 10.069558 | 63.26023 | 1.1494315 | 1.1589369 | 22718.79 | 166251.4 | 6942.91 | 0.9969967 | 1.0210792 | 1.001047302 | 1.1736607 | 1.1601506 | 1.1669056 |
-| LP78 | HelaS3_75sync_25inter_1_H3K9ac_1 | HeLaS3 | H3K9ac | 1 | 1 | NA | 9000686 | 478856 | 2350718 | 0.2037063 | 0.0532022 | 0.2611710 | 4.963025 | 34.02945 | 0.5665250 | 0.6234247 | 22547.08 | 165787.9 | 6860.25 | 0.9915105 | 1.0089226 | 0.9955388152 | 0.5715799 | 0.6206435 | 0.5961117 |
-| LP78 | HelaS3_75sync_25inter_1_H3K9ac_2 | HeLaS3 | H3K9ac | 1 | 2 | NA | 10985910 | 499861 | 2263534 | 0.2208321 | 0.0455002 | 0.2060397 | 4.244537 | 26.84609 | 0.4845103 | 0.4918244 | 22465.16 | 165797.5 | 6778.33 | 0.9915680 | 0.9968748 | 0.9955964622 | 0.4829961 | 0.4896586 | 0.4863274 |
-| LP78 | HelaS3_75sync_25inter_1_H3K9ac_3 | HeLaS3 | H3K9ac | 1 | 3 | NA | 8336422 | 443340 | 2215916 | 0.2000708 | 0.0531811 | 0.2658114 | 4.961059 | 34.63408 | 0.5663006 | 0.6345015 | 22570.42 | 165843.8 | 6883.59 | 0.9918449 | 1.0123552 | 0.9958744888 | 0.5732973 | 0.6318839 | 0.6025906 |
+| experiment.ID | library.ID | cell | IP | biorep | techrep | X | bwa.hg38..q.50 | bwa.dm6..q.50 | bwa.sac3..q.50 | dm6.sac3 | dm6.hg38 | sac3.hg38 | dm6.hg38.IP.input | sac3.hg38.IP.input | dm6.hg38.IP.input.control.norm | sac3.hg38.IP.input.control.norm | dm6.IP.signal | sac3.IP.signal | dm6.eff.IP.input | sac3.eff.IP.input | dm6.eff.control.norm | sac3.eff.control.norm | dm6.normfactor.snr.adj | sac3.normfactor.snr.adj | dual.normfactor.snr.adj |
+|:---|:---|:---|:---|---:|---:|:---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|:---|---:|---:|---:|
+| LP78 | HelaS3_100sync_0inter_1_H3K9ac_1 | HeLaS3 | H3K9ac | 1 | 1 | NA | 8446795 | 787637 | 3384998 | 0.233 | 0.09325 | 0.40074 | 8.253 | 50.572 | 0.9420 | 0.9265 | 22496.56 | 165939.1 | 6720.68 | 0.995 | 0.988 | 0.999 | 0.931 | 0.926 | 0.928 |
+| LP78 | HelaS3_100sync_0inter_1_H3K9ac_2 | HeLaS3 | H3K9ac | 1 | 2 | NA | 8000672 | 719513 | 3165051 | 0.227 | 0.08993 | 0.39560 | 7.959 | 49.922 | 0.9085 | 0.9146 | 22511.03 | 166041.9 | 6735.15 | 0.996 | 0.991 | 1.000 | 0.900 | 0.914 | 0.907 |
+| LP78 | HelaS3_100sync_0inter_1_H3K9ac_3 | HeLaS3 | H3K9ac | 1 | 3 | NA | 7144407 | 812865 | 3581432 | 0.227 | 0.11378 | 0.50129 | 10.070 | 63.260 | 1.1494 | 1.1589 | 22718.79 | 166251.4 | 6942.91 | 0.997 | 1.021 | 1.001 | 1.174 | 1.160 | 1.167 |
+| LP78 | HelaS3_75sync_25inter_1_H3K9ac_1 | HeLaS3 | H3K9ac | 1 | 1 | NA | 9000686 | 478856 | 2350718 | 0.204 | 0.05320 | 0.26117 | 4.963 | 34.029 | 0.5665 | 0.6234 | 22547.08 | 165787.9 | 6860.25 | 0.992 | 1.009 | 0.996 | 0.572 | 0.621 | 0.596 |
+| LP78 | HelaS3_75sync_25inter_1_H3K9ac_2 | HeLaS3 | H3K9ac | 1 | 2 | NA | 10985910 | 499861 | 2263534 | 0.221 | 0.04550 | 0.20604 | 4.245 | 26.846 | 0.4845 | 0.4918 | 22465.16 | 165797.5 | 6778.33 | 0.992 | 0.997 | 0.996 | 0.483 | 0.490 | 0.486 |
+| LP78 | HelaS3_75sync_25inter_1_H3K9ac_3 | HeLaS3 | H3K9ac | 1 | 3 | NA | 8336422 | 443340 | 2215916 | 0.200 | 0.05318 | 0.26581 | 4.961 | 34.634 | 0.5663 | 0.6345 | 22570.42 | 165843.8 | 6883.59 | 0.992 | 1.012 | 0.996 | 0.573 | 0.632 | 0.603 |
 
 After:
 
@@ -489,14 +652,14 @@ After:
 seqstats %>% rename_with(~ gsub("/", "_", .x), contains("/")) %>% head() %>% knitr::kable()
 ```
 
-| experiment ID | library ID | cell | IP | biorep | techrep | …7 | bwa hg38 -q 50 | bwa dm6 -q 50 | bwa sac3 -q 50 | dm6_sac3 | dm6_hg38 | sac3_hg38 | dm6_hg38 IP_input | sac3_hg38 IP_input | dm6_hg38 IP_input control norm | sac3_hg38 IP_input control norm | dm6 IP signal | sac3 IP signal | dm6 eff IP_input | sac3 eff IP_input | dm6 eff control norm | sac3 eff control norm | dm6 normfactor snr adj | sac3 normfactor snr adj | dual normfactor snr adj |
-|:---|:---|:---|:---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|:---|---:|---:|---:|
-| LP78 | HelaS3_100sync_0inter_1_H3K9ac_1 | HeLaS3 | H3K9ac | 1 | 1 | NA | 8446795 | 787637 | 3384998 | 0.2326846 | 0.0932468 | 0.4007435 | 8.252629 | 50.57160 | 0.9420306 | 0.9264793 | 22496.56 | 165939.1 | 6720.68 | 0.9951239 | 0.9883963 | 0.9991668547 | 0.9310996 | 0.9257074 | 0.9284035 |
-| LP78 | HelaS3_100sync_0inter_1_H3K9ac_2 | HeLaS3 | H3K9ac | 1 | 2 | NA | 8000672 | 719513 | 3165051 | 0.2273306 | 0.0899316 | 0.3955981 | 7.959218 | 49.92229 | 0.9085379 | 0.9145838 | 22511.03 | 166041.9 | 6735.15 | 0.9957404 | 0.9905244 | 0.9997858429 | 0.8999290 | 0.9143879 | 0.9071584 |
-| LP78 | HelaS3_100sync_0inter_1_H3K9ac_3 | HeLaS3 | H3K9ac | 1 | 3 | NA | 7144407 | 812865 | 3581432 | 0.2269665 | 0.1137764 | 0.5012917 | 10.069558 | 63.26023 | 1.1494315 | 1.1589369 | 22718.79 | 166251.4 | 6942.91 | 0.9969967 | 1.0210792 | 1.001047302 | 1.1736607 | 1.1601506 | 1.1669056 |
-| LP78 | HelaS3_75sync_25inter_1_H3K9ac_1 | HeLaS3 | H3K9ac | 1 | 1 | NA | 9000686 | 478856 | 2350718 | 0.2037063 | 0.0532022 | 0.2611710 | 4.963025 | 34.02945 | 0.5665250 | 0.6234247 | 22547.08 | 165787.9 | 6860.25 | 0.9915105 | 1.0089226 | 0.9955388152 | 0.5715799 | 0.6206435 | 0.5961117 |
-| LP78 | HelaS3_75sync_25inter_1_H3K9ac_2 | HeLaS3 | H3K9ac | 1 | 2 | NA | 10985910 | 499861 | 2263534 | 0.2208321 | 0.0455002 | 0.2060397 | 4.244537 | 26.84609 | 0.4845103 | 0.4918244 | 22465.16 | 165797.5 | 6778.33 | 0.9915680 | 0.9968748 | 0.9955964622 | 0.4829961 | 0.4896586 | 0.4863274 |
-| LP78 | HelaS3_75sync_25inter_1_H3K9ac_3 | HeLaS3 | H3K9ac | 1 | 3 | NA | 8336422 | 443340 | 2215916 | 0.2000708 | 0.0531811 | 0.2658114 | 4.961059 | 34.63408 | 0.5663006 | 0.6345015 | 22570.42 | 165843.8 | 6883.59 | 0.9918449 | 1.0123552 | 0.9958744888 | 0.5732973 | 0.6318839 | 0.6025906 |
+| experiment.ID | library.ID | cell | IP | biorep | techrep | X | bwa.hg38..q.50 | bwa.dm6..q.50 | bwa.sac3..q.50 | dm6.sac3 | dm6.hg38 | sac3.hg38 | dm6.hg38.IP.input | sac3.hg38.IP.input | dm6.hg38.IP.input.control.norm | sac3.hg38.IP.input.control.norm | dm6.IP.signal | sac3.IP.signal | dm6.eff.IP.input | sac3.eff.IP.input | dm6.eff.control.norm | sac3.eff.control.norm | dm6.normfactor.snr.adj | sac3.normfactor.snr.adj | dual.normfactor.snr.adj |
+|:---|:---|:---|:---|---:|---:|:---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|:---|---:|---:|---:|
+| LP78 | HelaS3_100sync_0inter_1_H3K9ac_1 | HeLaS3 | H3K9ac | 1 | 1 | NA | 8446795 | 787637 | 3384998 | 0.233 | 0.09325 | 0.40074 | 8.253 | 50.572 | 0.9420 | 0.9265 | 22496.56 | 165939.1 | 6720.68 | 0.995 | 0.988 | 0.999 | 0.931 | 0.926 | 0.928 |
+| LP78 | HelaS3_100sync_0inter_1_H3K9ac_2 | HeLaS3 | H3K9ac | 1 | 2 | NA | 8000672 | 719513 | 3165051 | 0.227 | 0.08993 | 0.39560 | 7.959 | 49.922 | 0.9085 | 0.9146 | 22511.03 | 166041.9 | 6735.15 | 0.996 | 0.991 | 1.000 | 0.900 | 0.914 | 0.907 |
+| LP78 | HelaS3_100sync_0inter_1_H3K9ac_3 | HeLaS3 | H3K9ac | 1 | 3 | NA | 7144407 | 812865 | 3581432 | 0.227 | 0.11378 | 0.50129 | 10.070 | 63.260 | 1.1494 | 1.1589 | 22718.79 | 166251.4 | 6942.91 | 0.997 | 1.021 | 1.001 | 1.174 | 1.160 | 1.167 |
+| LP78 | HelaS3_75sync_25inter_1_H3K9ac_1 | HeLaS3 | H3K9ac | 1 | 1 | NA | 9000686 | 478856 | 2350718 | 0.204 | 0.05320 | 0.26117 | 4.963 | 34.029 | 0.5665 | 0.6234 | 22547.08 | 165787.9 | 6860.25 | 0.992 | 1.009 | 0.996 | 0.572 | 0.621 | 0.596 |
+| LP78 | HelaS3_75sync_25inter_1_H3K9ac_2 | HeLaS3 | H3K9ac | 1 | 2 | NA | 10985910 | 499861 | 2263534 | 0.221 | 0.04550 | 0.20604 | 4.245 | 26.846 | 0.4845 | 0.4918 | 22465.16 | 165797.5 | 6778.33 | 0.992 | 0.997 | 0.996 | 0.483 | 0.490 | 0.486 |
+| LP78 | HelaS3_75sync_25inter_1_H3K9ac_3 | HeLaS3 | H3K9ac | 1 | 3 | NA | 8336422 | 443340 | 2215916 | 0.200 | 0.05318 | 0.26581 | 4.961 | 34.634 | 0.5663 | 0.6345 | 22570.42 | 165843.8 | 6883.59 | 0.992 | 1.012 | 0.996 | 0.573 | 0.632 | 0.603 |
 
 ## Remove All Numbers from Column Names
 
@@ -512,25 +675,17 @@ seqstats_new <- seqstats
 names(seqstats_new) <- gsub("[[:digit:]]", "", names(seqstats))
 
 # checking
-seqstats_new %>% head()
+seqstats_new %>% head() %>% knitr::kable()
 ```
 
-    # A tibble: 6 × 26
-      `experiment ID` `library ID`     cell  IP    biorep techrep   ... `bwa hg -q `
-      <chr>           <chr>            <chr> <chr>  <dbl>   <dbl> <dbl>        <dbl>
-    1 LP78            HelaS3_100sync_… HeLa… H3K9…      1       1    NA      8446795
-    2 LP78            HelaS3_100sync_… HeLa… H3K9…      1       2    NA      8000672
-    3 LP78            HelaS3_100sync_… HeLa… H3K9…      1       3    NA      7144407
-    4 LP78            HelaS3_75sync_2… HeLa… H3K9…      1       1    NA      9000686
-    5 LP78            HelaS3_75sync_2… HeLa… H3K9…      1       2    NA     10985910
-    6 LP78            HelaS3_75sync_2… HeLa… H3K9…      1       3    NA      8336422
-    # ℹ 18 more variables: `bwa dm -q ` <dbl>, `bwa sac -q ` <dbl>, `dm/sac` <dbl>,
-    #   `dm/hg` <dbl>, `sac/hg` <dbl>, `dm/hg IP/input` <dbl>,
-    #   `sac/hg IP/input` <dbl>, `dm/hg IP/input control norm` <dbl>,
-    #   `sac/hg IP/input control norm` <dbl>, `dm IP signal` <dbl>,
-    #   `sac IP signal` <dbl>, `dm eff IP/input` <dbl>, `sac eff IP/input` <dbl>,
-    #   `dm eff control norm` <dbl>, `sac eff control norm` <chr>,
-    #   `dm normfactor snr adj` <dbl>, `sac normfactor snr adj` <dbl>, …
+| experiment.ID | library.ID | cell | IP | biorep | techrep | X | bwa.hg..q. | bwa.dm..q. | bwa.sac..q. | dm.sac | dm.hg | sac.hg | dm.hg.IP.input | sac.hg.IP.input | dm.hg.IP.input.control.norm | sac.hg.IP.input.control.norm | dm.IP.signal | sac.IP.signal | dm.eff.IP.input | sac.eff.IP.input | dm.eff.control.norm | sac.eff.control.norm | dm.normfactor.snr.adj | sac.normfactor.snr.adj | dual.normfactor.snr.adj |
+|:---|:---|:---|:---|---:|---:|:---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|:---|---:|---:|---:|
+| LP78 | HelaS3_100sync_0inter_1_H3K9ac_1 | HeLaS3 | H3K9ac | 1 | 1 | NA | 8446795 | 787637 | 3384998 | 0.233 | 0.09325 | 0.40074 | 8.253 | 50.572 | 0.9420 | 0.9265 | 22496.56 | 165939.1 | 6720.68 | 0.995 | 0.988 | 0.999 | 0.931 | 0.926 | 0.928 |
+| LP78 | HelaS3_100sync_0inter_1_H3K9ac_2 | HeLaS3 | H3K9ac | 1 | 2 | NA | 8000672 | 719513 | 3165051 | 0.227 | 0.08993 | 0.39560 | 7.959 | 49.922 | 0.9085 | 0.9146 | 22511.03 | 166041.9 | 6735.15 | 0.996 | 0.991 | 1.000 | 0.900 | 0.914 | 0.907 |
+| LP78 | HelaS3_100sync_0inter_1_H3K9ac_3 | HeLaS3 | H3K9ac | 1 | 3 | NA | 7144407 | 812865 | 3581432 | 0.227 | 0.11378 | 0.50129 | 10.070 | 63.260 | 1.1494 | 1.1589 | 22718.79 | 166251.4 | 6942.91 | 0.997 | 1.021 | 1.001 | 1.174 | 1.160 | 1.167 |
+| LP78 | HelaS3_75sync_25inter_1_H3K9ac_1 | HeLaS3 | H3K9ac | 1 | 1 | NA | 9000686 | 478856 | 2350718 | 0.204 | 0.05320 | 0.26117 | 4.963 | 34.029 | 0.5665 | 0.6234 | 22547.08 | 165787.9 | 6860.25 | 0.992 | 1.009 | 0.996 | 0.572 | 0.621 | 0.596 |
+| LP78 | HelaS3_75sync_25inter_1_H3K9ac_2 | HeLaS3 | H3K9ac | 1 | 2 | NA | 10985910 | 499861 | 2263534 | 0.221 | 0.04550 | 0.20604 | 4.245 | 26.846 | 0.4845 | 0.4918 | 22465.16 | 165797.5 | 6778.33 | 0.992 | 0.997 | 0.996 | 0.483 | 0.490 | 0.486 |
+| LP78 | HelaS3_75sync_25inter_1_H3K9ac_3 | HeLaS3 | H3K9ac | 1 | 3 | NA | 8336422 | 443340 | 2215916 | 0.200 | 0.05318 | 0.26581 | 4.961 | 34.634 | 0.5663 | 0.6345 | 22570.42 | 165843.8 | 6883.59 | 0.992 | 1.012 | 0.996 | 0.573 | 0.632 | 0.603 |
 
 ### Rename Column by Order
 
@@ -539,27 +694,25 @@ seqstats_new %>% head()
 Example:
 
 ``` r
-#first copy the dataset with a new name, so we don't mess with the original
+#I'm copying the dataset with a new name, so we don't mess with the original
 seqstats_newID <- seqstats
 
-#changing the name: 
+#changing the name of the first column: 
 colnames(seqstats_newID)[1] <- "newID"
+colnames(seqstats_newID)[2] <- "newcolumn2"
 
 #checking:
 knitr::kable(head(seqstats_newID))
 ```
 
-| newID | library ID | cell | IP | biorep | techrep | …7 | bwa hg38 -q 50 | bwa dm6 -q 50 | bwa sac3 -q 50 | dm6/sac3 | dm6/hg38 | sac3/hg38 | dm6/hg38 IP/input | sac3/hg38 IP/input | dm6/hg38 IP/input control norm | sac3/hg38 IP/input control norm | dm6 IP signal | sac3 IP signal | dm6 eff IP/input | sac3 eff IP/input | dm6 eff control norm | sac3 eff control norm | dm6 normfactor snr adj | sac3 normfactor snr adj | dual normfactor snr adj |
-|:---|:---|:---|:---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|:---|---:|---:|---:|
-| LP78 | HelaS3_100sync_0inter_1_H3K9ac_1 | HeLaS3 | H3K9ac | 1 | 1 | NA | 8446795 | 787637 | 3384998 | 0.2326846 | 0.0932468 | 0.4007435 | 8.252629 | 50.57160 | 0.9420306 | 0.9264793 | 22496.56 | 165939.1 | 6720.68 | 0.9951239 | 0.9883963 | 0.9991668547 | 0.9310996 | 0.9257074 | 0.9284035 |
-| LP78 | HelaS3_100sync_0inter_1_H3K9ac_2 | HeLaS3 | H3K9ac | 1 | 2 | NA | 8000672 | 719513 | 3165051 | 0.2273306 | 0.0899316 | 0.3955981 | 7.959218 | 49.92229 | 0.9085379 | 0.9145838 | 22511.03 | 166041.9 | 6735.15 | 0.9957404 | 0.9905244 | 0.9997858429 | 0.8999290 | 0.9143879 | 0.9071584 |
-| LP78 | HelaS3_100sync_0inter_1_H3K9ac_3 | HeLaS3 | H3K9ac | 1 | 3 | NA | 7144407 | 812865 | 3581432 | 0.2269665 | 0.1137764 | 0.5012917 | 10.069558 | 63.26023 | 1.1494315 | 1.1589369 | 22718.79 | 166251.4 | 6942.91 | 0.9969967 | 1.0210792 | 1.001047302 | 1.1736607 | 1.1601506 | 1.1669056 |
-| LP78 | HelaS3_75sync_25inter_1_H3K9ac_1 | HeLaS3 | H3K9ac | 1 | 1 | NA | 9000686 | 478856 | 2350718 | 0.2037063 | 0.0532022 | 0.2611710 | 4.963025 | 34.02945 | 0.5665250 | 0.6234247 | 22547.08 | 165787.9 | 6860.25 | 0.9915105 | 1.0089226 | 0.9955388152 | 0.5715799 | 0.6206435 | 0.5961117 |
-| LP78 | HelaS3_75sync_25inter_1_H3K9ac_2 | HeLaS3 | H3K9ac | 1 | 2 | NA | 10985910 | 499861 | 2263534 | 0.2208321 | 0.0455002 | 0.2060397 | 4.244537 | 26.84609 | 0.4845103 | 0.4918244 | 22465.16 | 165797.5 | 6778.33 | 0.9915680 | 0.9968748 | 0.9955964622 | 0.4829961 | 0.4896586 | 0.4863274 |
-| LP78 | HelaS3_75sync_25inter_1_H3K9ac_3 | HeLaS3 | H3K9ac | 1 | 3 | NA | 8336422 | 443340 | 2215916 | 0.2000708 | 0.0531811 | 0.2658114 | 4.961059 | 34.63408 | 0.5663006 | 0.6345015 | 22570.42 | 165843.8 | 6883.59 | 0.9918449 | 1.0123552 | 0.9958744888 | 0.5732973 | 0.6318839 | 0.6025906 |
-
-Where the \# above is the column number (above changes the name of the
-first column)
+| newID | newcolumn2 | cell | IP | biorep | techrep | X | bwa.hg38..q.50 | bwa.dm6..q.50 | bwa.sac3..q.50 | dm6.sac3 | dm6.hg38 | sac3.hg38 | dm6.hg38.IP.input | sac3.hg38.IP.input | dm6.hg38.IP.input.control.norm | sac3.hg38.IP.input.control.norm | dm6.IP.signal | sac3.IP.signal | dm6.eff.IP.input | sac3.eff.IP.input | dm6.eff.control.norm | sac3.eff.control.norm | dm6.normfactor.snr.adj | sac3.normfactor.snr.adj | dual.normfactor.snr.adj |
+|:---|:---|:---|:---|---:|---:|:---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|:---|---:|---:|---:|
+| LP78 | HelaS3_100sync_0inter_1_H3K9ac_1 | HeLaS3 | H3K9ac | 1 | 1 | NA | 8446795 | 787637 | 3384998 | 0.233 | 0.09325 | 0.40074 | 8.253 | 50.572 | 0.9420 | 0.9265 | 22496.56 | 165939.1 | 6720.68 | 0.995 | 0.988 | 0.999 | 0.931 | 0.926 | 0.928 |
+| LP78 | HelaS3_100sync_0inter_1_H3K9ac_2 | HeLaS3 | H3K9ac | 1 | 2 | NA | 8000672 | 719513 | 3165051 | 0.227 | 0.08993 | 0.39560 | 7.959 | 49.922 | 0.9085 | 0.9146 | 22511.03 | 166041.9 | 6735.15 | 0.996 | 0.991 | 1.000 | 0.900 | 0.914 | 0.907 |
+| LP78 | HelaS3_100sync_0inter_1_H3K9ac_3 | HeLaS3 | H3K9ac | 1 | 3 | NA | 7144407 | 812865 | 3581432 | 0.227 | 0.11378 | 0.50129 | 10.070 | 63.260 | 1.1494 | 1.1589 | 22718.79 | 166251.4 | 6942.91 | 0.997 | 1.021 | 1.001 | 1.174 | 1.160 | 1.167 |
+| LP78 | HelaS3_75sync_25inter_1_H3K9ac_1 | HeLaS3 | H3K9ac | 1 | 1 | NA | 9000686 | 478856 | 2350718 | 0.204 | 0.05320 | 0.26117 | 4.963 | 34.029 | 0.5665 | 0.6234 | 22547.08 | 165787.9 | 6860.25 | 0.992 | 1.009 | 0.996 | 0.572 | 0.621 | 0.596 |
+| LP78 | HelaS3_75sync_25inter_1_H3K9ac_2 | HeLaS3 | H3K9ac | 1 | 2 | NA | 10985910 | 499861 | 2263534 | 0.221 | 0.04550 | 0.20604 | 4.245 | 26.846 | 0.4845 | 0.4918 | 22465.16 | 165797.5 | 6778.33 | 0.992 | 0.997 | 0.996 | 0.483 | 0.490 | 0.486 |
+| LP78 | HelaS3_75sync_25inter_1_H3K9ac_3 | HeLaS3 | H3K9ac | 1 | 3 | NA | 8336422 | 443340 | 2215916 | 0.200 | 0.05318 | 0.26581 | 4.961 | 34.634 | 0.5663 | 0.6345 | 22570.42 | 165843.8 | 6883.59 | 0.992 | 1.012 | 0.996 | 0.573 | 0.632 | 0.603 |
 
 ## Change data in column
 
@@ -571,22 +724,104 @@ beginning, as ggplot can’t take a number at the beginning of a variable.
 knitr::kable(head(seqstats))
 ```
 
-| experiment ID | library ID | cell | IP | biorep | techrep | …7 | bwa hg38 -q 50 | bwa dm6 -q 50 | bwa sac3 -q 50 | dm6/sac3 | dm6/hg38 | sac3/hg38 | dm6/hg38 IP/input | sac3/hg38 IP/input | dm6/hg38 IP/input control norm | sac3/hg38 IP/input control norm | dm6 IP signal | sac3 IP signal | dm6 eff IP/input | sac3 eff IP/input | dm6 eff control norm | sac3 eff control norm | dm6 normfactor snr adj | sac3 normfactor snr adj | dual normfactor snr adj |
-|:---|:---|:---|:---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|:---|---:|---:|---:|
-| LP78 | HelaS3_100sync_0inter_1_H3K9ac_1 | HeLaS3 | H3K9ac | 1 | 1 | NA | 8446795 | 787637 | 3384998 | 0.2326846 | 0.0932468 | 0.4007435 | 8.252629 | 50.57160 | 0.9420306 | 0.9264793 | 22496.56 | 165939.1 | 6720.68 | 0.9951239 | 0.9883963 | 0.9991668547 | 0.9310996 | 0.9257074 | 0.9284035 |
-| LP78 | HelaS3_100sync_0inter_1_H3K9ac_2 | HeLaS3 | H3K9ac | 1 | 2 | NA | 8000672 | 719513 | 3165051 | 0.2273306 | 0.0899316 | 0.3955981 | 7.959218 | 49.92229 | 0.9085379 | 0.9145838 | 22511.03 | 166041.9 | 6735.15 | 0.9957404 | 0.9905244 | 0.9997858429 | 0.8999290 | 0.9143879 | 0.9071584 |
-| LP78 | HelaS3_100sync_0inter_1_H3K9ac_3 | HeLaS3 | H3K9ac | 1 | 3 | NA | 7144407 | 812865 | 3581432 | 0.2269665 | 0.1137764 | 0.5012917 | 10.069558 | 63.26023 | 1.1494315 | 1.1589369 | 22718.79 | 166251.4 | 6942.91 | 0.9969967 | 1.0210792 | 1.001047302 | 1.1736607 | 1.1601506 | 1.1669056 |
-| LP78 | HelaS3_75sync_25inter_1_H3K9ac_1 | HeLaS3 | H3K9ac | 1 | 1 | NA | 9000686 | 478856 | 2350718 | 0.2037063 | 0.0532022 | 0.2611710 | 4.963025 | 34.02945 | 0.5665250 | 0.6234247 | 22547.08 | 165787.9 | 6860.25 | 0.9915105 | 1.0089226 | 0.9955388152 | 0.5715799 | 0.6206435 | 0.5961117 |
-| LP78 | HelaS3_75sync_25inter_1_H3K9ac_2 | HeLaS3 | H3K9ac | 1 | 2 | NA | 10985910 | 499861 | 2263534 | 0.2208321 | 0.0455002 | 0.2060397 | 4.244537 | 26.84609 | 0.4845103 | 0.4918244 | 22465.16 | 165797.5 | 6778.33 | 0.9915680 | 0.9968748 | 0.9955964622 | 0.4829961 | 0.4896586 | 0.4863274 |
-| LP78 | HelaS3_75sync_25inter_1_H3K9ac_3 | HeLaS3 | H3K9ac | 1 | 3 | NA | 8336422 | 443340 | 2215916 | 0.2000708 | 0.0531811 | 0.2658114 | 4.961059 | 34.63408 | 0.5663006 | 0.6345015 | 22570.42 | 165843.8 | 6883.59 | 0.9918449 | 1.0123552 | 0.9958744888 | 0.5732973 | 0.6318839 | 0.6025906 |
+| experiment.ID | library.ID | cell | IP | biorep | techrep | X | bwa.hg38..q.50 | bwa.dm6..q.50 | bwa.sac3..q.50 | dm6.sac3 | dm6.hg38 | sac3.hg38 | dm6.hg38.IP.input | sac3.hg38.IP.input | dm6.hg38.IP.input.control.norm | sac3.hg38.IP.input.control.norm | dm6.IP.signal | sac3.IP.signal | dm6.eff.IP.input | sac3.eff.IP.input | dm6.eff.control.norm | sac3.eff.control.norm | dm6.normfactor.snr.adj | sac3.normfactor.snr.adj | dual.normfactor.snr.adj |
+|:---|:---|:---|:---|---:|---:|:---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|:---|---:|---:|---:|
+| LP78 | HelaS3_100sync_0inter_1_H3K9ac_1 | HeLaS3 | H3K9ac | 1 | 1 | NA | 8446795 | 787637 | 3384998 | 0.233 | 0.09325 | 0.40074 | 8.253 | 50.572 | 0.9420 | 0.9265 | 22496.56 | 165939.1 | 6720.68 | 0.995 | 0.988 | 0.999 | 0.931 | 0.926 | 0.928 |
+| LP78 | HelaS3_100sync_0inter_1_H3K9ac_2 | HeLaS3 | H3K9ac | 1 | 2 | NA | 8000672 | 719513 | 3165051 | 0.227 | 0.08993 | 0.39560 | 7.959 | 49.922 | 0.9085 | 0.9146 | 22511.03 | 166041.9 | 6735.15 | 0.996 | 0.991 | 1.000 | 0.900 | 0.914 | 0.907 |
+| LP78 | HelaS3_100sync_0inter_1_H3K9ac_3 | HeLaS3 | H3K9ac | 1 | 3 | NA | 7144407 | 812865 | 3581432 | 0.227 | 0.11378 | 0.50129 | 10.070 | 63.260 | 1.1494 | 1.1589 | 22718.79 | 166251.4 | 6942.91 | 0.997 | 1.021 | 1.001 | 1.174 | 1.160 | 1.167 |
+| LP78 | HelaS3_75sync_25inter_1_H3K9ac_1 | HeLaS3 | H3K9ac | 1 | 1 | NA | 9000686 | 478856 | 2350718 | 0.204 | 0.05320 | 0.26117 | 4.963 | 34.029 | 0.5665 | 0.6234 | 22547.08 | 165787.9 | 6860.25 | 0.992 | 1.009 | 0.996 | 0.572 | 0.621 | 0.596 |
+| LP78 | HelaS3_75sync_25inter_1_H3K9ac_2 | HeLaS3 | H3K9ac | 1 | 2 | NA | 10985910 | 499861 | 2263534 | 0.221 | 0.04550 | 0.20604 | 4.245 | 26.846 | 0.4845 | 0.4918 | 22465.16 | 165797.5 | 6778.33 | 0.992 | 0.997 | 0.996 | 0.483 | 0.490 | 0.486 |
+| LP78 | HelaS3_75sync_25inter_1_H3K9ac_3 | HeLaS3 | H3K9ac | 1 | 3 | NA | 8336422 | 443340 | 2215916 | 0.200 | 0.05318 | 0.26581 | 4.961 | 34.634 | 0.5663 | 0.6345 | 22570.42 | 165843.8 | 6883.59 | 0.992 | 1.012 | 0.996 | 0.573 | 0.632 | 0.603 |
 
-# random downsampling of data
+# Actions: subsampling rows, set NAs to 0, etc.
+
+## random downsampling of data
+
+Below keeps 10 random rows of the dataframe:
 
 ``` r
 seqstats[sample(nrow(seqstats), 10),]
 ```
 
-# Cleanup data - set NAs to 0
+        experiment.ID                      library.ID        cell       IP biorep
+    120          LP91        HCT116_DMSO_0hr_2_Rpb1_1 HCT116-Rpb1     Rpb1      2
+    166          LP95     HCT116_IAA_1hr_3_H3K36me3_1 HCT116-Rpb1 H3K36me3      3
+    197          LP95         HCT116_IAA_1hr_4_Rpb1_1 HCT116-Rpb1     Rpb1      4
+    14           LP78 HelaS3_5sync_95inter_1_H3K9ac_2      HeLaS3   H3K9ac      1
+    143          LP92      HCT116_IAA_1hr_2_H3K4me3_1 HCT116-Rpb1  H3K4me3      2
+    169          LP95     HCT116_IAA_4hr_4_H3K36me3_1 HCT116-Rpb1 H3K36me3      4
+    168          LP95     HCT116_IAA_4hr_3_H3K36me3_1 HCT116-Rpb1 H3K36me3      3
+    182          LP95        HCT116_TRP_1hr_3_input_1 HCT116-Rpb1    input      3
+    172          LP95      HCT116_TRP_1hr_3_H3K4me3_1 HCT116-Rpb1  H3K4me3      3
+    123          LP91         HCT116_TRP_1hr_2_Rpb1_2 HCT116-Rpb1     Rpb1      2
+        techrep  X bwa.hg38..q.50 bwa.dm6..q.50 bwa.sac3..q.50 dm6.sac3 dm6.hg38
+    120     1.0 NA        8057207          8906            827   10.769  0.00111
+    166     1.0 NA       10900478       1071176          38258   27.999  0.09827
+    197     1.0 NA        4158781         39739           2473   16.069  0.00956
+    14      2.0 NA       13886959        305756        1478948    0.207  0.02202
+    143     1.1 NA       20105003        718860         201651    3.565  0.03576
+    169     1.0 NA        7329545       1283137          79308   16.179  0.17506
+    168     1.0 NA       10936219       1844417          87931   20.976  0.16865
+    182     1.0 NA       24869141        274837         142554    1.928  0.01105
+    172     1.0 NA        7876580       4494332         273457   16.435  0.57059
+    123     2.0 NA       10074290         12017            520   23.110  0.00119
+        sac3.hg38 dm6.hg38.IP.input sac3.hg38.IP.input
+    120   0.00010             0.066              0.077
+    166   0.00351            10.585              0.735
+    197   0.00059             1.587              0.181
+    14    0.10650             2.244             14.841
+    143   0.01003             2.224              7.714
+    169   0.01082             7.150              0.965
+    168   0.00804            11.085              1.094
+    182   0.00573                NA                 NA
+    172   0.03472            51.631              6.057
+    123   0.00005             0.056              0.032
+        dm6.hg38.IP.input.control.norm sac3.hg38.IP.input.control.norm
+    120                         0.7286                          0.7579
+    166                         1.3781                          1.1938
+    197                         1.0470                          5.7847
+    14                          0.2561                          0.2719
+    143                         1.3004                          1.6851
+    169                         0.9308                          1.5687
+    168                         1.4431                          1.7777
+    182                             NA                              NA
+    172                         1.1974                          1.1848
+    123                         0.6168                          0.3112
+        dm6.IP.signal sac3.IP.signal dm6.eff.IP.input sac3.eff.IP.input
+    120    6669.26100             NA             1.03                NA
+    166      96.91704       649.3339             0.01             0.009
+    197    9789.04000             NA             1.51                NA
+    14    22060.34000    165382.4000          6230.72             0.988
+    143   39727.41000    126933.2000         33396.33         59027.870
+    169      93.02468       665.5144             0.01             0.010
+    168      97.16207       661.8124             0.01             0.010
+    182    6533.58100     68582.7300               NA                NA
+    172   30402.04000    128407.0000         23868.46         59824.270
+    123    7494.06400             NA             1.17                NA
+        dm6.eff.control.norm sac3.eff.control.norm dm6.normfactor.snr.adj
+    120                1.013                                       0.7380
+    166                1.010                 0.994                 1.3930
+    197                1.133                                       1.1859
+    14                 0.916                 0.992                 0.2350
+    143                1.438                 1.113                 1.8700
+    169                0.955                 1.012                 0.8890
+    168                1.002                 1.011                 1.4460
+    182                   NA                                           NA
+    172                1.008                 1.007                 1.2070
+    123                1.152                                       0.7100
+        sac3.normfactor.snr.adj dual.normfactor.snr.adj
+    120                      NA                  0.7380
+    166                   1.187                  1.2900
+    197                      NA                  1.1859
+    14                    0.270                  0.2520
+    143                   1.876                  1.8730
+    169                   1.588                  1.2380
+    168                   1.798                  1.6220
+    182                      NA                      NA
+    172                   1.194                  1.2000
+    123                      NA                  0.7100
+
+## Cleanup data - set NAs to 0
 
 ``` r
 # set NAs in numeric columns to 0
@@ -601,26 +836,59 @@ Example below (code not run) uses multiple tidyverse functions:
 
 ``` r
 seqstats %>% 
-  mutate(total_reads = `bwa hg38 -q 50` + `bwa dm6 -q 50` + `bwa sac3 -q 50`) %>%
+  mutate(total_reads = bwa.hg38..q.50 + bwa.dm6..q.50 + bwa.sac3..q.50) %>%
   head()
 ```
 
-    # A tibble: 6 × 27
-      `experiment ID` `library ID` cell  IP    biorep techrep  ...7 `bwa hg38 -q 50`
-      <chr>           <chr>        <chr> <chr>  <dbl>   <dbl> <dbl>            <dbl>
-    1 LP78            HelaS3_100s… HeLa… H3K9…      1       1    NA          8446795
-    2 LP78            HelaS3_100s… HeLa… H3K9…      1       2    NA          8000672
-    3 LP78            HelaS3_100s… HeLa… H3K9…      1       3    NA          7144407
-    4 LP78            HelaS3_75sy… HeLa… H3K9…      1       1    NA          9000686
-    5 LP78            HelaS3_75sy… HeLa… H3K9…      1       2    NA         10985910
-    6 LP78            HelaS3_75sy… HeLa… H3K9…      1       3    NA          8336422
-    # ℹ 19 more variables: `bwa dm6 -q 50` <dbl>, `bwa sac3 -q 50` <dbl>,
-    #   `dm6/sac3` <dbl>, `dm6/hg38` <dbl>, `sac3/hg38` <dbl>,
-    #   `dm6/hg38 IP/input` <dbl>, `sac3/hg38 IP/input` <dbl>,
-    #   `dm6/hg38 IP/input control norm` <dbl>,
-    #   `sac3/hg38 IP/input control norm` <dbl>, `dm6 IP signal` <dbl>,
-    #   `sac3 IP signal` <dbl>, `dm6 eff IP/input` <dbl>,
-    #   `sac3 eff IP/input` <dbl>, `dm6 eff control norm` <dbl>, …
+      experiment.ID                       library.ID   cell     IP biorep techrep
+    1          LP78 HelaS3_100sync_0inter_1_H3K9ac_1 HeLaS3 H3K9ac      1       1
+    2          LP78 HelaS3_100sync_0inter_1_H3K9ac_2 HeLaS3 H3K9ac      1       2
+    3          LP78 HelaS3_100sync_0inter_1_H3K9ac_3 HeLaS3 H3K9ac      1       3
+    4          LP78 HelaS3_75sync_25inter_1_H3K9ac_1 HeLaS3 H3K9ac      1       1
+    5          LP78 HelaS3_75sync_25inter_1_H3K9ac_2 HeLaS3 H3K9ac      1       2
+    6          LP78 HelaS3_75sync_25inter_1_H3K9ac_3 HeLaS3 H3K9ac      1       3
+       X bwa.hg38..q.50 bwa.dm6..q.50 bwa.sac3..q.50 dm6.sac3 dm6.hg38 sac3.hg38
+    1 NA        8446795        787637        3384998    0.233  0.09325   0.40074
+    2 NA        8000672        719513        3165051    0.227  0.08993   0.39560
+    3 NA        7144407        812865        3581432    0.227  0.11378   0.50129
+    4 NA        9000686        478856        2350718    0.204  0.05320   0.26117
+    5 NA       10985910        499861        2263534    0.221  0.04550   0.20604
+    6 NA        8336422        443340        2215916    0.200  0.05318   0.26581
+      dm6.hg38.IP.input sac3.hg38.IP.input dm6.hg38.IP.input.control.norm
+    1             8.253             50.572                         0.9420
+    2             7.959             49.922                         0.9085
+    3            10.070             63.260                         1.1494
+    4             4.963             34.029                         0.5665
+    5             4.245             26.846                         0.4845
+    6             4.961             34.634                         0.5663
+      sac3.hg38.IP.input.control.norm dm6.IP.signal sac3.IP.signal dm6.eff.IP.input
+    1                          0.9265      22496.56       165939.1          6720.68
+    2                          0.9146      22511.03       166041.9          6735.15
+    3                          1.1589      22718.79       166251.4          6942.91
+    4                          0.6234      22547.08       165787.9          6860.25
+    5                          0.4918      22465.16       165797.5          6778.33
+    6                          0.6345      22570.42       165843.8          6883.59
+      sac3.eff.IP.input dm6.eff.control.norm sac3.eff.control.norm
+    1             0.995                0.988                 0.999
+    2             0.996                0.991                 1.000
+    3             0.997                1.021                 1.001
+    4             0.992                1.009                 0.996
+    5             0.992                0.997                 0.996
+    6             0.992                1.012                 0.996
+      dm6.normfactor.snr.adj sac3.normfactor.snr.adj dual.normfactor.snr.adj
+    1                  0.931                   0.926                   0.928
+    2                  0.900                   0.914                   0.907
+    3                  1.174                   1.160                   1.167
+    4                  0.572                   0.621                   0.596
+    5                  0.483                   0.490                   0.486
+    6                  0.573                   0.632                   0.603
+      total_reads
+    1    12619430
+    2    11885236
+    3    11538704
+    4    11830260
+    5    13749305
+    6    10995678
 
 ## select columns
 
@@ -628,35 +896,33 @@ By full name:
 
 ``` r
 seqstats %>% 
-   select(., IP) %>% head()
+   select(., IP) %>% head() %>% knitr::kable()
 ```
 
-    # A tibble: 6 × 1
-      IP    
-      <chr> 
-    1 H3K9ac
-    2 H3K9ac
-    3 H3K9ac
-    4 H3K9ac
-    5 H3K9ac
-    6 H3K9ac
+| IP     |
+|:-------|
+| H3K9ac |
+| H3K9ac |
+| H3K9ac |
+| H3K9ac |
+| H3K9ac |
+| H3K9ac |
 
 By partial match with `contains`
 
 ``` r
 seqstats %>% 
-   select(., contains("snr")) %>% head()
+   select(., contains("snr")) %>% head() %>% knitr::kable()
 ```
 
-    # A tibble: 6 × 3
-      `dm6 normfactor snr adj` `sac3 normfactor snr adj` `dual normfactor snr adj`
-                         <dbl>                     <dbl>                     <dbl>
-    1                    0.931                     0.926                     0.928
-    2                    0.900                     0.914                     0.907
-    3                    1.17                      1.16                      1.17 
-    4                    0.572                     0.621                     0.596
-    5                    0.483                     0.490                     0.486
-    6                    0.573                     0.632                     0.603
+| dm6.normfactor.snr.adj | sac3.normfactor.snr.adj | dual.normfactor.snr.adj |
+|-----------------------:|------------------------:|------------------------:|
+|                  0.931 |                   0.926 |                   0.928 |
+|                  0.900 |                   0.914 |                   0.907 |
+|                  1.174 |                   1.160 |                   1.167 |
+|                  0.572 |                   0.621 |                   0.596 |
+|                  0.483 |                   0.490 |                   0.486 |
+|                  0.573 |                   0.632 |                   0.603 |
 
 ## paring mutate and select
 
@@ -675,14 +941,69 @@ seqstats %>%
            rowMeans()) %>% head() %>% knitr::kable()
 ```
 
-| experiment ID | library ID | cell | IP | biorep | techrep | …7 | bwa hg38 -q 50 | bwa dm6 -q 50 | bwa sac3 -q 50 | dm6/sac3 | dm6/hg38 | sac3/hg38 | dm6/hg38 IP/input | sac3/hg38 IP/input | dm6/hg38 IP/input control norm | sac3/hg38 IP/input control norm | dm6 IP signal | sac3 IP signal | dm6 eff IP/input | sac3 eff IP/input | dm6 eff control norm | sac3 eff control norm | dm6 normfactor snr adj | sac3 normfactor snr adj | dual normfactor snr adj | avg_normfactor |
-|:---|:---|:---|:---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|:---|---:|---:|---:|---:|
-| LP78 | HelaS3_100sync_0inter_1_H3K9ac_1 | HeLaS3 | H3K9ac | 1 | 1 | NA | 8446795 | 787637 | 3384998 | 0.2326846 | 0.0932468 | 0.4007435 | 8.252629 | 50.57160 | 0.9420306 | 0.9264793 | 22496.56 | 165939.1 | 6720.68 | 0.9951239 | 0.9883963 | 0.9991668547 | 0.9310996 | 0.9257074 | 0.9284035 | 0.9284035 |
-| LP78 | HelaS3_100sync_0inter_1_H3K9ac_2 | HeLaS3 | H3K9ac | 1 | 2 | NA | 8000672 | 719513 | 3165051 | 0.2273306 | 0.0899316 | 0.3955981 | 7.959218 | 49.92229 | 0.9085379 | 0.9145838 | 22511.03 | 166041.9 | 6735.15 | 0.9957404 | 0.9905244 | 0.9997858429 | 0.8999290 | 0.9143879 | 0.9071584 | 0.9071584 |
-| LP78 | HelaS3_100sync_0inter_1_H3K9ac_3 | HeLaS3 | H3K9ac | 1 | 3 | NA | 7144407 | 812865 | 3581432 | 0.2269665 | 0.1137764 | 0.5012917 | 10.069558 | 63.26023 | 1.1494315 | 1.1589369 | 22718.79 | 166251.4 | 6942.91 | 0.9969967 | 1.0210792 | 1.001047302 | 1.1736607 | 1.1601506 | 1.1669056 | 1.1669056 |
-| LP78 | HelaS3_75sync_25inter_1_H3K9ac_1 | HeLaS3 | H3K9ac | 1 | 1 | NA | 9000686 | 478856 | 2350718 | 0.2037063 | 0.0532022 | 0.2611710 | 4.963025 | 34.02945 | 0.5665250 | 0.6234247 | 22547.08 | 165787.9 | 6860.25 | 0.9915105 | 1.0089226 | 0.9955388152 | 0.5715799 | 0.6206435 | 0.5961117 | 0.5961117 |
-| LP78 | HelaS3_75sync_25inter_1_H3K9ac_2 | HeLaS3 | H3K9ac | 1 | 2 | NA | 10985910 | 499861 | 2263534 | 0.2208321 | 0.0455002 | 0.2060397 | 4.244537 | 26.84609 | 0.4845103 | 0.4918244 | 22465.16 | 165797.5 | 6778.33 | 0.9915680 | 0.9968748 | 0.9955964622 | 0.4829961 | 0.4896586 | 0.4863274 | 0.4863274 |
-| LP78 | HelaS3_75sync_25inter_1_H3K9ac_3 | HeLaS3 | H3K9ac | 1 | 3 | NA | 8336422 | 443340 | 2215916 | 0.2000708 | 0.0531811 | 0.2658114 | 4.961059 | 34.63408 | 0.5663006 | 0.6345015 | 22570.42 | 165843.8 | 6883.59 | 0.9918449 | 1.0123552 | 0.9958744888 | 0.5732973 | 0.6318839 | 0.6025906 | 0.6025906 |
+| experiment.ID | library.ID | cell | IP | biorep | techrep | X | bwa.hg38..q.50 | bwa.dm6..q.50 | bwa.sac3..q.50 | dm6.sac3 | dm6.hg38 | sac3.hg38 | dm6.hg38.IP.input | sac3.hg38.IP.input | dm6.hg38.IP.input.control.norm | sac3.hg38.IP.input.control.norm | dm6.IP.signal | sac3.IP.signal | dm6.eff.IP.input | sac3.eff.IP.input | dm6.eff.control.norm | sac3.eff.control.norm | dm6.normfactor.snr.adj | sac3.normfactor.snr.adj | dual.normfactor.snr.adj | avg_normfactor |
+|:---|:---|:---|:---|---:|---:|:---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|:---|---:|---:|---:|---:|
+| LP78 | HelaS3_100sync_0inter_1_H3K9ac_1 | HeLaS3 | H3K9ac | 1 | 1 | NA | 8446795 | 787637 | 3384998 | 0.233 | 0.09325 | 0.40074 | 8.253 | 50.572 | 0.9420 | 0.9265 | 22496.56 | 165939.1 | 6720.68 | 0.995 | 0.988 | 0.999 | 0.931 | 0.926 | 0.928 | 0.9283333 |
+| LP78 | HelaS3_100sync_0inter_1_H3K9ac_2 | HeLaS3 | H3K9ac | 1 | 2 | NA | 8000672 | 719513 | 3165051 | 0.227 | 0.08993 | 0.39560 | 7.959 | 49.922 | 0.9085 | 0.9146 | 22511.03 | 166041.9 | 6735.15 | 0.996 | 0.991 | 1.000 | 0.900 | 0.914 | 0.907 | 0.9070000 |
+| LP78 | HelaS3_100sync_0inter_1_H3K9ac_3 | HeLaS3 | H3K9ac | 1 | 3 | NA | 7144407 | 812865 | 3581432 | 0.227 | 0.11378 | 0.50129 | 10.070 | 63.260 | 1.1494 | 1.1589 | 22718.79 | 166251.4 | 6942.91 | 0.997 | 1.021 | 1.001 | 1.174 | 1.160 | 1.167 | 1.1670000 |
+| LP78 | HelaS3_75sync_25inter_1_H3K9ac_1 | HeLaS3 | H3K9ac | 1 | 1 | NA | 9000686 | 478856 | 2350718 | 0.204 | 0.05320 | 0.26117 | 4.963 | 34.029 | 0.5665 | 0.6234 | 22547.08 | 165787.9 | 6860.25 | 0.992 | 1.009 | 0.996 | 0.572 | 0.621 | 0.596 | 0.5963333 |
+| LP78 | HelaS3_75sync_25inter_1_H3K9ac_2 | HeLaS3 | H3K9ac | 1 | 2 | NA | 10985910 | 499861 | 2263534 | 0.221 | 0.04550 | 0.20604 | 4.245 | 26.846 | 0.4845 | 0.4918 | 22465.16 | 165797.5 | 6778.33 | 0.992 | 0.997 | 0.996 | 0.483 | 0.490 | 0.486 | 0.4863333 |
+| LP78 | HelaS3_75sync_25inter_1_H3K9ac_3 | HeLaS3 | H3K9ac | 1 | 3 | NA | 8336422 | 443340 | 2215916 | 0.200 | 0.05318 | 0.26581 | 4.961 | 34.634 | 0.5663 | 0.6345 | 22570.42 | 165843.8 | 6883.59 | 0.992 | 1.012 | 0.996 | 0.573 | 0.632 | 0.603 | 0.6026667 |
+
+Before doing math, check which columns you are grabbing first! Here, we
+are looking to compute the average of two columns:
+`dm6.normfactor.snr.adj` and `sac3.normfactor.snr.adj` to double check
+our `dual.normfactor.snr.adj` column is accurate.
+
+We select for the snr/IP efficiency adjusted normalization factor
+columns by matching the string `snr.adj`, but then this also selets for
+the `dual.normfactor.snr.adj` column, which we do not want included.
+
+``` r
+seqstats %>% 
+  select(.,  matches('snr.adj')) %>% head() %>% knitr::kable()
+```
+
+| dm6.normfactor.snr.adj | sac3.normfactor.snr.adj | dual.normfactor.snr.adj |
+|-----------------------:|------------------------:|------------------------:|
+|                  0.931 |                   0.926 |                   0.928 |
+|                  0.900 |                   0.914 |                   0.907 |
+|                  1.174 |                   1.160 |                   1.167 |
+|                  0.572 |                   0.621 |                   0.596 |
+|                  0.483 |                   0.490 |                   0.486 |
+|                  0.573 |                   0.632 |                   0.603 |
+
+We can modify our search, so that we match “snr.adj” AND (“sac3” OR
+“dm6”)
+
+``` r
+seqstats %>% 
+  select(., matches('sac3|dm6') & matches('snr.adj')) %>% head() %>% knitr::kable()
+```
+
+| dm6.normfactor.snr.adj | sac3.normfactor.snr.adj |
+|-----------------------:|------------------------:|
+|                  0.931 |                   0.926 |
+|                  0.900 |                   0.914 |
+|                  1.174 |                   1.160 |
+|                  0.572 |                   0.621 |
+|                  0.483 |                   0.490 |
+|                  0.573 |                   0.632 |
+
+``` r
+seqstats %>% 
+  mutate(avg_normfactor_adj = select(., matches('sac3|dm6') & matches('snr.adj')) %>% 
+           rowMeans()) %>% head() %>% knitr::kable()
+```
+
+| experiment.ID | library.ID | cell | IP | biorep | techrep | X | bwa.hg38..q.50 | bwa.dm6..q.50 | bwa.sac3..q.50 | dm6.sac3 | dm6.hg38 | sac3.hg38 | dm6.hg38.IP.input | sac3.hg38.IP.input | dm6.hg38.IP.input.control.norm | sac3.hg38.IP.input.control.norm | dm6.IP.signal | sac3.IP.signal | dm6.eff.IP.input | sac3.eff.IP.input | dm6.eff.control.norm | sac3.eff.control.norm | dm6.normfactor.snr.adj | sac3.normfactor.snr.adj | dual.normfactor.snr.adj | avg_normfactor_adj |
+|:---|:---|:---|:---|---:|---:|:---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|:---|---:|---:|---:|---:|
+| LP78 | HelaS3_100sync_0inter_1_H3K9ac_1 | HeLaS3 | H3K9ac | 1 | 1 | NA | 8446795 | 787637 | 3384998 | 0.233 | 0.09325 | 0.40074 | 8.253 | 50.572 | 0.9420 | 0.9265 | 22496.56 | 165939.1 | 6720.68 | 0.995 | 0.988 | 0.999 | 0.931 | 0.926 | 0.928 | 0.9285 |
+| LP78 | HelaS3_100sync_0inter_1_H3K9ac_2 | HeLaS3 | H3K9ac | 1 | 2 | NA | 8000672 | 719513 | 3165051 | 0.227 | 0.08993 | 0.39560 | 7.959 | 49.922 | 0.9085 | 0.9146 | 22511.03 | 166041.9 | 6735.15 | 0.996 | 0.991 | 1.000 | 0.900 | 0.914 | 0.907 | 0.9070 |
+| LP78 | HelaS3_100sync_0inter_1_H3K9ac_3 | HeLaS3 | H3K9ac | 1 | 3 | NA | 7144407 | 812865 | 3581432 | 0.227 | 0.11378 | 0.50129 | 10.070 | 63.260 | 1.1494 | 1.1589 | 22718.79 | 166251.4 | 6942.91 | 0.997 | 1.021 | 1.001 | 1.174 | 1.160 | 1.167 | 1.1670 |
+| LP78 | HelaS3_75sync_25inter_1_H3K9ac_1 | HeLaS3 | H3K9ac | 1 | 1 | NA | 9000686 | 478856 | 2350718 | 0.204 | 0.05320 | 0.26117 | 4.963 | 34.029 | 0.5665 | 0.6234 | 22547.08 | 165787.9 | 6860.25 | 0.992 | 1.009 | 0.996 | 0.572 | 0.621 | 0.596 | 0.5965 |
+| LP78 | HelaS3_75sync_25inter_1_H3K9ac_2 | HeLaS3 | H3K9ac | 1 | 2 | NA | 10985910 | 499861 | 2263534 | 0.221 | 0.04550 | 0.20604 | 4.245 | 26.846 | 0.4845 | 0.4918 | 22465.16 | 165797.5 | 6778.33 | 0.992 | 0.997 | 0.996 | 0.483 | 0.490 | 0.486 | 0.4865 |
+| LP78 | HelaS3_75sync_25inter_1_H3K9ac_3 | HeLaS3 | H3K9ac | 1 | 3 | NA | 8336422 | 443340 | 2215916 | 0.200 | 0.05318 | 0.26581 | 4.961 | 34.634 | 0.5663 | 0.6345 | 22570.42 | 165843.8 | 6883.59 | 0.992 | 1.012 | 0.996 | 0.573 | 0.632 | 0.603 | 0.6025 |
 
 ## Pair Data
 
@@ -726,21 +1047,21 @@ Chose specific columns:
 ``` r
 seqstats_tidy <- 
     seqstats %>% pivot_longer(
-      cols = c(`bwa hg38 -q 50`, `bwa dm6 -q 50`, `bwa sac3 -q 50`), 
+      cols = c(bwa.hg38..q.50, bwa.dm6..q.50, bwa.sac3..q.50), 
       names_to = "Species", 
       values_to = "Reads")
 
 knitr::kable(head(seqstats_tidy))
 ```
 
-| experiment ID | library ID | cell | IP | biorep | techrep | …7 | dm6/sac3 | dm6/hg38 | sac3/hg38 | dm6/hg38 IP/input | sac3/hg38 IP/input | dm6/hg38 IP/input control norm | sac3/hg38 IP/input control norm | dm6 IP signal | sac3 IP signal | dm6 eff IP/input | sac3 eff IP/input | dm6 eff control norm | sac3 eff control norm | dm6 normfactor snr adj | sac3 normfactor snr adj | dual normfactor snr adj | Species | Reads |
-|:---|:---|:---|:---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|:---|---:|---:|---:|:---|---:|
-| LP78 | HelaS3_100sync_0inter_1_H3K9ac_1 | HeLaS3 | H3K9ac | 1 | 1 | NA | 0.2326846 | 0.0932468 | 0.4007435 | 8.252629 | 50.57160 | 0.9420306 | 0.9264793 | 22496.56 | 165939.1 | 6720.68 | 0.9951239 | 0.9883963 | 0.9991668547 | 0.9310996 | 0.9257074 | 0.9284035 | bwa hg38 -q 50 | 8446795 |
-| LP78 | HelaS3_100sync_0inter_1_H3K9ac_1 | HeLaS3 | H3K9ac | 1 | 1 | NA | 0.2326846 | 0.0932468 | 0.4007435 | 8.252629 | 50.57160 | 0.9420306 | 0.9264793 | 22496.56 | 165939.1 | 6720.68 | 0.9951239 | 0.9883963 | 0.9991668547 | 0.9310996 | 0.9257074 | 0.9284035 | bwa dm6 -q 50 | 787637 |
-| LP78 | HelaS3_100sync_0inter_1_H3K9ac_1 | HeLaS3 | H3K9ac | 1 | 1 | NA | 0.2326846 | 0.0932468 | 0.4007435 | 8.252629 | 50.57160 | 0.9420306 | 0.9264793 | 22496.56 | 165939.1 | 6720.68 | 0.9951239 | 0.9883963 | 0.9991668547 | 0.9310996 | 0.9257074 | 0.9284035 | bwa sac3 -q 50 | 3384998 |
-| LP78 | HelaS3_100sync_0inter_1_H3K9ac_2 | HeLaS3 | H3K9ac | 1 | 2 | NA | 0.2273306 | 0.0899316 | 0.3955981 | 7.959218 | 49.92229 | 0.9085379 | 0.9145838 | 22511.03 | 166041.9 | 6735.15 | 0.9957404 | 0.9905244 | 0.9997858429 | 0.8999290 | 0.9143879 | 0.9071584 | bwa hg38 -q 50 | 8000672 |
-| LP78 | HelaS3_100sync_0inter_1_H3K9ac_2 | HeLaS3 | H3K9ac | 1 | 2 | NA | 0.2273306 | 0.0899316 | 0.3955981 | 7.959218 | 49.92229 | 0.9085379 | 0.9145838 | 22511.03 | 166041.9 | 6735.15 | 0.9957404 | 0.9905244 | 0.9997858429 | 0.8999290 | 0.9143879 | 0.9071584 | bwa dm6 -q 50 | 719513 |
-| LP78 | HelaS3_100sync_0inter_1_H3K9ac_2 | HeLaS3 | H3K9ac | 1 | 2 | NA | 0.2273306 | 0.0899316 | 0.3955981 | 7.959218 | 49.92229 | 0.9085379 | 0.9145838 | 22511.03 | 166041.9 | 6735.15 | 0.9957404 | 0.9905244 | 0.9997858429 | 0.8999290 | 0.9143879 | 0.9071584 | bwa sac3 -q 50 | 3165051 |
+| experiment.ID | library.ID | cell | IP | biorep | techrep | X | dm6.sac3 | dm6.hg38 | sac3.hg38 | dm6.hg38.IP.input | sac3.hg38.IP.input | dm6.hg38.IP.input.control.norm | sac3.hg38.IP.input.control.norm | dm6.IP.signal | sac3.IP.signal | dm6.eff.IP.input | sac3.eff.IP.input | dm6.eff.control.norm | sac3.eff.control.norm | dm6.normfactor.snr.adj | sac3.normfactor.snr.adj | dual.normfactor.snr.adj | Species | Reads |
+|:---|:---|:---|:---|---:|---:|:---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|:---|---:|---:|---:|:---|---:|
+| LP78 | HelaS3_100sync_0inter_1_H3K9ac_1 | HeLaS3 | H3K9ac | 1 | 1 | NA | 0.233 | 0.09325 | 0.40074 | 8.253 | 50.572 | 0.9420 | 0.9265 | 22496.56 | 165939.1 | 6720.68 | 0.995 | 0.988 | 0.999 | 0.931 | 0.926 | 0.928 | bwa.hg38..q.50 | 8446795 |
+| LP78 | HelaS3_100sync_0inter_1_H3K9ac_1 | HeLaS3 | H3K9ac | 1 | 1 | NA | 0.233 | 0.09325 | 0.40074 | 8.253 | 50.572 | 0.9420 | 0.9265 | 22496.56 | 165939.1 | 6720.68 | 0.995 | 0.988 | 0.999 | 0.931 | 0.926 | 0.928 | bwa.dm6..q.50 | 787637 |
+| LP78 | HelaS3_100sync_0inter_1_H3K9ac_1 | HeLaS3 | H3K9ac | 1 | 1 | NA | 0.233 | 0.09325 | 0.40074 | 8.253 | 50.572 | 0.9420 | 0.9265 | 22496.56 | 165939.1 | 6720.68 | 0.995 | 0.988 | 0.999 | 0.931 | 0.926 | 0.928 | bwa.sac3..q.50 | 3384998 |
+| LP78 | HelaS3_100sync_0inter_1_H3K9ac_2 | HeLaS3 | H3K9ac | 1 | 2 | NA | 0.227 | 0.08993 | 0.39560 | 7.959 | 49.922 | 0.9085 | 0.9146 | 22511.03 | 166041.9 | 6735.15 | 0.996 | 0.991 | 1.000 | 0.900 | 0.914 | 0.907 | bwa.hg38..q.50 | 8000672 |
+| LP78 | HelaS3_100sync_0inter_1_H3K9ac_2 | HeLaS3 | H3K9ac | 1 | 2 | NA | 0.227 | 0.08993 | 0.39560 | 7.959 | 49.922 | 0.9085 | 0.9146 | 22511.03 | 166041.9 | 6735.15 | 0.996 | 0.991 | 1.000 | 0.900 | 0.914 | 0.907 | bwa.dm6..q.50 | 719513 |
+| LP78 | HelaS3_100sync_0inter_1_H3K9ac_2 | HeLaS3 | H3K9ac | 1 | 2 | NA | 0.227 | 0.08993 | 0.39560 | 7.959 | 49.922 | 0.9085 | 0.9146 | 22511.03 | 166041.9 | 6735.15 | 0.996 | 0.991 | 1.000 | 0.900 | 0.914 | 0.907 | bwa.sac3..q.50 | 3165051 |
 
 ## Reorder column contents
 
@@ -970,54 +1291,6 @@ knitr::kable(head(gapmindernew))
 | Afghanistan | Asia      | 1972 |  36.088 | 13079460 |  739.9811 | 1           |
 | Afghanistan | Asia      | 1977 |  38.438 | 14880372 |  786.1134 | 1           |
 
-# Boolean Logic
-
-- !x = NOT x (everything else)
-- x & y = x AND y
-- x && y =
-- x \| y = x OR y
-- x \|\| y =
-- xor(x, y) =
-
-Example: get rows whose column `library ID` contents matched the partial
-string `DPY30` OR `RBBP5`.
-
-``` r
-seqstats[grep("DPY30|RBBP5", seqstats$`library ID`), ] %>% head(n = 10) %>% knitr::kable()
-```
-
-| experiment ID | library ID | cell | IP | biorep | techrep | …7 | bwa hg38 -q 50 | bwa dm6 -q 50 | bwa sac3 -q 50 | dm6/sac3 | dm6/hg38 | sac3/hg38 | dm6/hg38 IP/input | sac3/hg38 IP/input | dm6/hg38 IP/input control norm | sac3/hg38 IP/input control norm | dm6 IP signal | sac3 IP signal | dm6 eff IP/input | sac3 eff IP/input | dm6 eff control norm | sac3 eff control norm | dm6 normfactor snr adj | sac3 normfactor snr adj | dual normfactor snr adj |
-|:---|:---|:---|:---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|:---|---:|---:|---:|
-| LP101 | LP101_DPY30mAID_IAA_0hr_1_H3K4me3_1 | mESC-Dpy30mAID | H3K4me3 | 1 | 1 | 8701023 | NA | 2244620 | 140474 | 0.2579720 | 0.0161445 | 82.48645 | 6.900959 | 1.000000 | 1.0000000 | 60691.44 | 264642.7 | 3.310585 | 1.358330 | 1.0000000 | 1.0000000 | 1.0 | 1.0000000 | 1.000000 | NA |
-| LP101 | LP101_DPY30mAID_IAA_0hr_1_input_1 | mESC-Dpy30mAID | NA | 1 | 1 | 14835269 | NA | 45652 | 33690 | 0.0030773 | 0.0022709 | NA | NA | NA | NA | 18332.54 | 194829.5 | NA | NA | NA | NA | NA | NA | NA | NA |
-| LP101 | LP101_DPY30mAID_IAA_0hr_1_input_2 | mESC-Dpy30mAID | NA | 1 | 2 | 19515475 | NA | 62013 | 46993 | 0.0031776 | 0.0024080 | NA | NA | NA | NA | 18071.94 | 193999.7 | NA | NA | NA | NA | NA | NA | NA | NA |
-| LP101 | LP101_DPY30mAID_IAA_24hr_1_H3K4me3_1 | mESC-Dpy30mAID | H3K4me3 | 1 | 1 | 11356645 | NA | 2929585 | 146334 | 0.2579622 | 0.0128853 | 116.79127 | 5.486450 | 1.415884 | 0.7950272 | 62918.10 | 267300.0 | 3.425070 | 1.378007 | 1.0345815 | 1.0144863 | 1.464847756504565 | 0.8065443 | 1.135696 | NA |
-| LP101 | LP101_DPY30mAID_IAA_24hr_1_H3K4me3_2 | mESC-Dpy30mAID | H3K4me3 | 1 | 2 | 9478740 | NA | 2404464 | 119671 | 0.2536692 | 0.0126252 | 114.84761 | 5.375694 | 1.392321 | 0.7789779 | 62518.37 | 267515.4 | 3.328545 | 1.385352 | 1.0054250 | 1.0198939 | 1.3998743927569224 | 0.7944748 | 1.097175 | NA |
-| LP101 | LP101_DPY30mAID_IAA_24hr_1_input_1 | mESC-Dpy30mAID | NA | 1 | 1 | 11939641 | NA | 26745 | 26761 | 0.0022400 | 0.0022414 | NA | NA | NA | NA | 18369.87 | 193975.8 | NA | NA | NA | NA | NA | NA | NA | NA |
-| LP101 | LP101_DPY30mAID_IAA_24hr_1_input_2 | mESC-Dpy30mAID | NA | 1 | 2 | 12097963 | NA | 26343 | 29710 | 0.0021775 | 0.0024558 | NA | NA | NA | NA | 18782.49 | 193102.8 | NA | NA | NA | NA | NA | NA | NA | NA |
-| LP101 | LP101_RBBP5FKBP_dTAG13_0hr_1_H3K4me3_1 | mESC-RBBP5FKBP | H3K4me3 | 1 | 1 | 8759236 | NA | 1145797 | 88874 | 0.1308102 | 0.0101463 | 49.30893 | 7.368531 | 1.000000 | 1.0000000 | 64402.67 | 270471.3 | 3.500723 | 1.388588 | 1.0000000 | 1.0000000 | 1.0 | 1.0000000 | 1.000000 | NA |
-| LP101 | LP101_RBBP5FKBP_dTAG13_0hr_1_input_1 | mESC-RBBP5FKBP | NA | 1 | 1 | 12642161 | NA | 33538 | 17408 | 0.0026529 | 0.0013770 | NA | NA | NA | NA | 18396.96 | 194781.6 | NA | NA | NA | NA | NA | NA | NA | NA |
-| LP101 | LP101_RBBP5FKBP_dTAG13_24hr_1_H3K4me3_1 | mESC-RBBP5FKBP | H3K4me3 | 1 | 1 | 6110805 | NA | 2864394 | 123819 | 0.4687425 | 0.0202623 | 182.00847 | 10.756930 | 3.691187 | 1.4598472 | 62839.92 | 268884.4 | 3.392374 | 1.380411 | 0.9941119 | 0.9941119 | 3.669452561443117 | 1.4512515 | 2.560352 | NA |
-
-For AND matches, we need to modify the notation, as
-`grep("DMSO&Rpb1", ...)` will only find a match if there is a library ID
-that contains the continuous string “DMSO Rpb1” in that exact order.
-Also, `grep` will not work, we need `grepl`. We need to do:
-
-``` r
-seqstats[grepl("DMSO", seqstats$`library ID`) & grepl("Rpb1", seqstats$`library ID`), ] %>%
-head() %>% knitr::kable()
-```
-
-| experiment ID | library ID | cell | IP | biorep | techrep | …7 | bwa hg38 -q 50 | bwa dm6 -q 50 | bwa sac3 -q 50 | dm6/sac3 | dm6/hg38 | sac3/hg38 | dm6/hg38 IP/input | sac3/hg38 IP/input | dm6/hg38 IP/input control norm | sac3/hg38 IP/input control norm | dm6 IP signal | sac3 IP signal | dm6 eff IP/input | sac3 eff IP/input | dm6 eff control norm | sac3 eff control norm | dm6 normfactor snr adj | sac3 normfactor snr adj | dual normfactor snr adj |
-|:---|:---|:---|:---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|:---|---:|---:|---:|
-| LP88 | HCT116_DMSO_0hr_1_Rpb1_1 | HCT116-Rpb1 | H3K4me3 | 1 | 1 | NA | 23252966 | 52648 | 2848 | 18.48596 | 0.0022641 | 0.0001225 | 0.3201269 | 0.0480709 | 1.0000000 | NA | 69.05311 | NA | 1.533166 | NA | 1.0000000 | NA | 1.0000000 | NA | 1.0000000 |
-| LP91 | HCT116_DMSO_0hr_2_Rpb1_1 | HCT116-Rpb1 | Rpb1 | 2 | 1 | NA | 8057207 | 8906 | 827 | 10.76904 | 0.0011053 | 0.0001026 | 0.0664754 | 0.0773184 | 0.7285511 | 0.7578813 | 6669.26100 | NA | 1.031603 | NA | 1.0125172 | NA | 0.7376706 | NA | 0.7376706 |
-| LP91 | HCT116_DMSO_0hr_2_Rpb1_2 | HCT116-Rpb1 | Rpb1 | 2 | 2 | NA | 7953774 | 15343 | 1338 | 11.46712 | 0.0019290 | 0.0001682 | 0.1160112 | 0.1267198 | 1.2714489 | 1.2421187 | 6504.36400 | NA | 1.006096 | NA | 0.9874828 | NA | 1.2555339 | NA | 1.2555339 |
-| LP95 | HCT116_DMSO_0hr_3_Rpb1_1 | HCT116-Rpb1 | Rpb1 | 3 | 1 | NA | 4807836 | 67749 | 1088 | 62.26930 | 0.0140914 | 0.0002263 | 1.4091118 | 0.0421450 | 0.9293630 | 1.3447684 | 8170.40000 | NA | 1.278321 | NA | 1.0677682 | NA | 0.9923443 | NA | 0.9923443 |
-| LP95 | HCT116_DMSO_0hr_4_Rpb1_1 | HCT116-Rpb1 | Rpb1 | 4 | 1 | NA | 4852590 | 110428 | 712 | 155.09551 | 0.0227565 | 0.0001467 | 1.6233133 | 0.0205349 | 1.0706370 | 0.6552316 | 7270.40200 | NA | 1.116058 | NA | 0.9261240 | NA | 0.9915426 | NA | 0.9915426 |
-| LP85 | bias_HCT116_DMSO_0hr_Rpb1_1 | HCT116-Rpb1 | Rpb1 | NA | NA | NA | NA | NA | NA | NA | NA | NA | NA | NA | NA | NA | NA | NA | NA | NA | NA | NA | NA | NA | NA |
-
 # Special cases
 
 ## Convert Time Series to Dataframe with `as.matrix()` and `data.frame()`
@@ -1038,3 +1311,20 @@ head(seatbelts_df)
     4            87    1385   814  407 10955   0.1008733         8   0 1969.250
     5           119    1632   991  454 11823   0.1010197        10   0 1969.333
     6           106    1511   945  427 12391   0.1005812        13   0 1969.417
+
+## Split verbose column into multiple with `separate_wider_regex()`
+
+Using `separate_wider_regex()` from tidyr package, info here:
+https://tidyr.tidyverse.org/reference/separate_wider_delim.html
+
+Syntax:
+
+``` r
+dataframe %>% separate_wider_regex(
+  cols = columntosplit, 
+  patterns = c(
+    newcol1 = "regex",
+    "regex", #if you want to discard anything between columns
+    newcol2 = "regex"
+  ))
+```

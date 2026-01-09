@@ -39,7 +39,7 @@ theme_set(theme_classic()) # feel free to not use this theme if you find a diffe
 ## Some general notes for this document: 
 
 1. if you see `%>%` in code, this is the pipe operator used in tidyverse. In the newest version of R (after 4.0) you can also use the standard pipe `|`
-2. Most examples will be either my own or public data commonly used in R tutorials. One example of public data is the gapminder dataset which is loaded above with `library(gapminder)`. It contains demographic/economic/health information on countries from 1952-2007. 
+2. Many examples will be either my own or public data commonly used in R tutorials. One example of public data is the gapminder dataset which is loaded above with `library(gapminder)`. It contains demographic/economic/health information on countries from 1952-2007. 
 3. My own data is used when its a good example for bioinformatic-specific tasks, OR when it's a good example of "human-annotated" data being difficult to feed into programs. There are lots of issues I learned hard way (for example, ggplot does not work properly if your variables for x/y start with a number, and my sample IDs usually start with an experiment number, go figure)
 4. I tried to load all relevant example data in the *Data Import* section. Because not everyone has these files, I also run commands to visualize their structure (what their rows/columns are, etc) when they are loaded. I also try to show before/after examples to show what each line of code does when possible, or at least a verbal explanation.
 
@@ -59,9 +59,9 @@ I keep a master spreadsheet with sequencing statistics for all of my NGS experim
 
 
 ```{r}
-seqstats <- read_excel("Sequencing_Stats_260107.xlsx", 
+seqstats_excel <- read_excel("Sequencing_Stats_260107.xlsx", 
     sheet = "all_dualspike_metadata")
-knitr::kable(head(seqstats))
+knitr::kable(head(seqstats_excel))
 ```
 
 ## Import from TSV, CSV, etc
@@ -76,6 +76,11 @@ knitr::kable(head(TRP_input_tagLen, n = 10))
 
 If you use read.delim it automatically defaults `sep = "\t"`, perfect for tsv files.
 
+```{r}
+seqstats <- read.delim("all_dualspike_metadata.tsv", sep = "\t")
+knitr::kable(head(seqstats))
+```
+
 # Getting Basic Information
 
 ## Basic operations: 
@@ -84,13 +89,24 @@ Isolating a column by name: `seqstats$cell`
 
 If there are spaces in the name, use "`", as in 
 
-```{r, eval = FALSE}
-seqstats$`experiment ID`
+```{r}
+seqstats_excel$`experiment ID` %>% head()
+```
+
+If you use `read.delim()`, spaces are converted to periods "." so 
+
+```{r}
+seqstats$experiment.ID %>% head()
 ```
 
 Print column names: `names(seqstats)` or `colnames(seqstats)`
 
 Isolate column by position: `seqstats[1]`
+
+```{r}
+seqstats[1] %>% head()
+```
+
 
 ## Cleanup column names in Kable with `gsub()`
 
@@ -99,7 +115,7 @@ Usually dataframe column names have _ or . in their name for ease of coding, but
 Example below replaces underscores in column names with spaces only for knitr::kable() to display, WITHOUT modifying the original dataset.
 
 ```{r}
-knitr::kable(head(seqstats), col.names = gsub("[_]", " ", names(seqstats)))
+knitr::kable(head(seqstats), col.names = gsub("[.]", " ", names(seqstats)))
 ```
 
 ## Variable classes
@@ -130,14 +146,14 @@ In the below code we are searching for:
 3. within this dataset, the ID column
 
 ```{r}
-grep("_1hr", seqstats$ID)
+grep("_1hr", seqstats$library.ID)
 ```
 
 **`grepl()`** is very similar, but instead of returining indices of the matches location, it returns a logical vector, with TRUE representing a match, and FALSE if not a match
 
 The same example with grepl:
 ```{r}
-grepl("_1hr", seqstats$ID)
+grepl("_1hr", seqstats$library.ID)
 ```
 
 ## Search and return row of dataframe
@@ -147,33 +163,33 @@ Syntax: `dataframe[grep("string", dataframe$column), ]`
 Use indexes to return row with match: works with `grep` and `grepl`
 
 ```{r}
-seqstats[grep("0hr", seqstats$ID), ] %>% knitr::kable()
+seqstats[grep("0hr", seqstats$library.ID), ] %>% head() %>% knitr::kable()
 ```
 
-## Multiple matches with logical operators
+
+# Boolean Logic
+
+- !x = NOT x (everything else)
+- x & y = x AND y
+- x && y = 
+- x | y = x OR y
+- x || y = 
+- xor(x, y) = 
+
+Example: get rows whose column `library.ID` contents matched the partial string `H3K36me3` OR `Rpb1`.
 
 ```{r}
-seqstats[grep("69a|69e", seqstats$ID), ] %>% knitr::kable()
+seqstats[grep("H3K36me3|Rpb1", seqstats$library.ID), ] %>% head(n = 10) %>% knitr::kable()
 ```
 
-# Split verbose column into multiple with `separate_wider_regex()`
-
-Using `separate_wider_regex()` from tidyr package, info here: https://tidyr.tidyverse.org/reference/separate_wider_delim.html
-
-Syntax: 
+For AND matches, we need to modify the notation, as `grep("DMSO&Rpb1", ...)` will only find a match if there is a library ID that contains the continuous string "DMSO Rpb1" in that exact order. Also, `grep` will not work, we need `grepl`. We need to do: 
 
 ```{r}
-#| eval = FALSE
-
-dataframe %>% separate_wider_regex(
-  cols = columntosplit, 
-  patterns = c(
-    newcol1 = "regex",
-    "regex", #if you want to discard anything between columns
-    newcol2 = "regex"
-  ))
-
+seqstats[grepl("DMSO", seqstats$library.ID) & grepl("Rpb1", seqstats$library.ID), ] %>% 
+  head() %>% knitr::kable()
 ```
+
+# Regex in R
 
 Regex: 
 
@@ -185,7 +201,15 @@ Regex:
 - [[:alnum:]] = letters and numbers
 - [[:graph:]] = any character but not white space/blank
 
-Special: `+` goes after a match, means it can be counted more than once! Useful instead of denoting `[:digit:][:digit:]` for a two digit number
+Special options: 
+
+- `+` goes after a match, means it can be counted more than once! Useful instead of denoting `[:digit:][:digit:]` for a two digit number
+- `\` escapes any special character that otherwise has a meaning in regex. For example, a period usually means any character, but if preceeeded by `\` as in `\.` only a literal "." will match
+
+More complicated examples: 
+
+`\.+\.` will match any string between two periods
+
 
 ## Example with my sequencing data
 
@@ -197,13 +221,40 @@ My ChIP samples are labeled with the following format in the sample sheet before
 knitr::kable(head(seqstats))
 ```
 
+## rename columns
+
+`gsub` is similar to find/replace in most applications.
+
+Below, I am replacing ".q.50" with "MAPQ_50_cutoff", but ONLY if the column name also contains the string "bwa".
+
+```{r}
+seqstats %>% 
+    rename_with(~ gsub(".q.50", "MAPQ_50_cutoff", .x), contains("bwa")) %>% head() %>% knitr::kable()
+```
+
+```{r}
+seqstats %>% 
+  rename_with(~ gsub("cell", "new_cell", .x), contains("cell")) %>% head() %>% knitr::kable()
+```
+
+
+## with select()
+
+```{r}
+seqstats %>%
+  select(matches(".+")) %>% head() %>% knitr::kable()
+```
+```{r}
+seqstats %>%
+  select(matches("[:alpha:]")) %>% head() %>% knitr::kable()
+```
+
+```{r}
+seqstats %>%
+  select(matches("[:digit:]")) %>% head() %>% knitr::kable()
+```
+
 # Combine dataframes
-
-## Tidyverse `cbind()`
-
-
-## Tidyverse `rbind()`
-
 
 ## Base R `merge()`
 
@@ -223,6 +274,7 @@ Copied from above:
 seqstats <- bind_rows(seqstats, new_data)
 ```
 
+See Tidyverse for `cbind()` and `rbind()`
 
 # Changing Names with `rename_with()` and `gsub()`
 
@@ -267,7 +319,7 @@ seqstats_new <- seqstats
 names(seqstats_new) <- gsub("[[:digit:]]", "", names(seqstats))
 
 # checking
-seqstats_new %>% head()
+seqstats_new %>% head() %>% knitr::kable()
 ```
 
 
@@ -278,17 +330,17 @@ seqstats_new %>% head()
 Example: 
 
 ```{r}
-#first copy the dataset with a new name, so we don't mess with the original
+#I'm copying the dataset with a new name, so we don't mess with the original
 seqstats_newID <- seqstats
 
-#changing the name: 
+#changing the name of the first column: 
 colnames(seqstats_newID)[1] <- "newID"
+colnames(seqstats_newID)[2] <- "newcolumn2"
 
 #checking:
 knitr::kable(head(seqstats_newID))
 ```
 
-Where the # above is the column number (above changes the name of the first column)
 
 ## Change data in column
 
@@ -299,18 +351,23 @@ Example changed the sample names to remove the experiment number at the beginnin
 knitr::kable(head(seqstats))
 ```
 
-# random downsampling of data
+# Actions: subsampling rows, set NAs to 0, etc.
 
-```{r, eval = FALSE}
-seqstats[sample(nrow(seqstats), 10),]
+## random downsampling of data
+
+Below keeps 10 random rows of the dataframe:
+
+```{r}
+seqstats[sample(nrow(seqstats), 10),] %>% knitr::kable()
 ```
 
-# Cleanup data - set NAs to 0
+## Cleanup data - set NAs to 0
 
 ```{r}
 # set NAs in numeric columns to 0
 seqstats[is.na(is.numeric(seqstats))] <- 0
 ```
+
 
 # Tidyverse basics
 
@@ -320,8 +377,8 @@ Example below (code not run) uses multiple tidyverse functions:
 
 ```{r}
 seqstats %>% 
-  mutate(total_reads = `bwa hg38 -q 50` + `bwa dm6 -q 50` + `bwa sac3 -q 50`) %>%
-  head()
+  mutate(total_reads = bwa.hg38..q.50 + bwa.dm6..q.50 + bwa.sac3..q.50) %>%
+  head() %>% knitr::kable()
 ```
 
 ## select columns 
@@ -329,14 +386,14 @@ seqstats %>%
 By full name: 
 ```{r}
 seqstats %>% 
-   select(., IP) %>% head()
+   select(., IP) %>% head() %>% knitr::kable()
 ```
 
 By partial match with `contains`
 
 ```{r}
 seqstats %>% 
-   select(., contains("snr")) %>% head()
+   select(., contains("snr")) %>% head() %>% knitr::kable()
 ```
 
 
@@ -352,6 +409,28 @@ seqstats %>%
   mutate(avg_normfactor = select(., contains("snr")) %>% 
            rowMeans()) %>% head() %>% knitr::kable()
 ```
+
+Before doing math, check which columns you are grabbing first! Here, we are looking to compute the average of two columns: `dm6.normfactor.snr.adj` and `sac3.normfactor.snr.adj` to double check our `dual.normfactor.snr.adj` column is accurate.
+
+We select for the snr/IP efficiency adjusted normalization factor columns by matching the string `snr.adj`, but then this also selets for the `dual.normfactor.snr.adj` column, which we do not want included.
+
+```{r}
+seqstats %>% 
+  select(.,  matches('snr.adj')) %>% head() %>% knitr::kable()
+```
+
+We can modify our search, so that we match "snr.adj" AND ("sac3" OR "dm6")
+```{r}
+seqstats %>% 
+  select(., matches('sac3|dm6') & matches('snr.adj')) %>% head() %>% knitr::kable()
+```
+
+```{r}
+seqstats %>% 
+  mutate(avg_normfactor_adj = select(., matches('sac3|dm6') & matches('snr.adj')) %>% 
+           rowMeans()) %>% head() %>% knitr::kable()
+```
+
 
 ## Pair Data
 
@@ -379,7 +458,7 @@ Chose specific columns:
 ```{r}
 seqstats_tidy <- 
     seqstats %>% pivot_longer(
-      cols = c(`bwa hg38 -q 50`, `bwa dm6 -q 50`, `bwa sac3 -q 50`), 
+      cols = c(bwa.hg38..q.50, bwa.dm6..q.50, bwa.sac3..q.50), 
       names_to = "Species", 
       values_to = "Reads")
 
@@ -528,27 +607,6 @@ gapmindernew$country_num <- as.factor(country_num)
 knitr::kable(head(gapmindernew))
 ```
 
-# Boolean Logic
-
-- !x = NOT x (everything else)
-- x & y = x AND y
-- x && y = 
-- x | y = x OR y
-- x || y = 
-- xor(x, y) = 
-
-Example: get rows whose column `library ID` contents matched the partial string `DPY30` OR `RBBP5`.
-
-```{r}
-seqstats[grep("DPY30|RBBP5", seqstats$`library ID`), ] %>% head(n = 10) %>% knitr::kable()
-```
-
-For AND matches, we need to modify the notation, as `grep("DMSO&Rpb1", ...)` will only find a match if there is a library ID that contains the continuous string "DMSO Rpb1" in that exact order. Also, `grep` will not work, we need `grepl`. We need to do: 
-
-```{r}
-seqstats[grepl("DMSO", seqstats$`library ID`) & grepl("Rpb1", seqstats$`library ID`), ] %>%
-head() %>% knitr::kable()
-```
 
 # Special cases
 
@@ -559,4 +617,23 @@ Example from seatbelts dataset: need to add a new column "date" and convert the 
 data("Seatbelts")
 seatbelts_df <- data.frame(as.matrix(Seatbelts), date = time(Seatbelts))
 head(seatbelts_df)
+```
+
+## Split verbose column into multiple with `separate_wider_regex()`
+
+Using `separate_wider_regex()` from tidyr package, info here: https://tidyr.tidyverse.org/reference/separate_wider_delim.html
+
+Syntax: 
+
+```{r}
+#| eval = FALSE
+
+dataframe %>% separate_wider_regex(
+  cols = columntosplit, 
+  patterns = c(
+    newcol1 = "regex",
+    "regex", #if you want to discard anything between columns
+    newcol2 = "regex"
+  ))
+
 ```
