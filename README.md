@@ -6,6 +6,7 @@ Tutorials for working and plotting in R, with examples from genomics data and pu
 [GGplot tutorial](https://github.com/lapatel22/tutorials/blob/main/GGplot_quarto.md) <br>
 
   Covers basic plot types in GGplot, and helpful shortcuts: 
+  
     - custom faceting
     - using categorical variables for plot aesthetics
     - Axes scaling, breaks 
@@ -14,7 +15,9 @@ Tutorials for working and plotting in R, with examples from genomics data and pu
     - Combining plots for published figures
 
 [Custom plotting functions](https://github.com/lapatel22/tutorials/blob/main/Laurens_functions.md) <br>
+
   Includes code for plotting common HOMER outputs, including:
+  
     - preprocessing of annotatePeaks histograms or counts files
     - plotting HOMER annotatePeaks histograms
     - calculating signal at histograms with Area-Under-Curve (used by ChIP-wrangler to estimate IP efficiency)
