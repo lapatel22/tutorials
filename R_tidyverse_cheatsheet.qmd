@@ -186,6 +186,51 @@ LP88_LP91_seqstats %>%
   filter(grepl(".comb|hr_1", ID))
 ```
 
+Filter/grepl with special character
+
+```{r}
+Sample <- c("HelaS3_0sync_100inter_1_H3K9ac_1.fly.normalized.tagdir.Coverage", 
+            "HelaS3_0sync_100inter_1_H3K9ac_1.yeast.normalized.tagdir.Coverage", 
+            "HelaS3_0sync_100inter_1_H3K9ac_1.dual.normalized.tagdir.Coverage", 
+            "HelaS3_0sync_100inter_1_H3K9ac_1.notnorm.tagdir.Coverage")
+
+data.frame(Sample) %>% filter(grepl("_..normalized", Sample))
+```
+
+Here the `_` is read as is, but the `.` can mean any one character, so this matches: 
+
+HelaS3_0sync_100inter_1_H3K9ac_1.normalized.tagdir.Coverage <br>
+HelaS3_0sync_100inter_1_H3K9ac_2.normalized.tagdir.Coverage	<br>
+HelaS3_0sync_100inter_1_H3K9ac_3.normalized.tagdir.Coverage <br>
+
+etc.
+
+Take another scenario: 
+
+```{r}
+data.frame(Sample) %>% filter(grepl(".[[:alpha:]]+.normalized", Sample)) 
+```
+
+```{r}
+data.frame(Sample) %>%
+  mutate(
+    # detect normalization method
+    method = case_when(
+      str_detect(Sample, "\\.fly\\.normalized\\.tagdir\\.Coverage$")   ~ "flynorm",
+      str_detect(Sample, "\\.yeast\\.normalized\\.tagdir\\.Coverage$") ~ "yeastnorm",
+      str_detect(Sample, "\\.normalized\\.tagdir\\.Coverage$")         ~ "norm",
+      TRUE ~ "other"
+    ),
+    
+    # remove suffixes to get the base sample name
+    base_sample = Sample %>%
+      str_remove("\\.fly\\.normalized\\.tagdir\\.Coverage$") %>%
+      str_remove("\\.yeast\\.normalized\\.tagdir\\.Coverage$") %>%
+      str_remove("\\.dual\\.normalized\\.tagdir\\.Coverage$"),
+  ) %>% knitr::kable()
+```
+
+
 # `mutate()`
 
 # Tidy(Long) formatted Data
@@ -317,6 +362,7 @@ gapminder |>
   group_by(year) |> 
   head()
 ```
+
 ## apply `slice_` functions to groups
 
 Extract specific rows from each group: 
@@ -413,13 +459,35 @@ Remove multiple parts of strings:
 str_remove_all(Sample, "H3K27ac_|\\.Coverage")
 ```
 
+Using regex: 
+
+```{r}
+Sample <- "HelaS3_75TSA_25DMSO_spike3_H3K27ac.Coverage"
+```
+
 ## `str_match` to keep part of a string based on regex pattern
 
 ```{r, eval = FALSE}
 str_match(Sample, '([^_]+)(?:_[^_]+){3}$')[,2]
 ```
 
+Combine with str_remove to get numeric variable for plotting
+
+```{r}
+TSAratio <- str_remove(str_match(Sample, '([^_]+)(?:_[^_]+){3}$')[,2], "TSA")
+
+TSAratio
+```
 
 ## `str_extract` to keep part of a string
+
+```{r, eval = FALSE}
+hist_tss_hg38_LP78_long_ordered <- hist_tss_hg38_LP78_long %>%
+  mutate(
+    # extract the number before 'inter'
+    biorep_num = as.numeric(str_extract(biorep, "\\d+(?=inter)"))
+  ) %>%
+  arrange(desc(biorep_num))
+```
 
 
