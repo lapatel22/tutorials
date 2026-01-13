@@ -79,7 +79,13 @@
 # Example dataset
 
 Titration of mitotic/interphase HeLa-S3 cells: from our preprint
-[here](https://pubmed.ncbi.nlm.nih.gov/41394721/)
+[here](https://pubmed.ncbi.nlm.nih.gov/41394721/). H3K9ac levels were
+varied by mixing mitotic cells (known to have low H3K9ac) with
+unsynchronized/interphase cells (higher H3K9ac) in known ratios to
+create a standard curve. The proportions of cells used are on the left
+side of the figure below. On the right, a histogram of H3K9ac signal is
+created first for traditional read-depth normalized signal (top) and
+ChIP-wrangler-normalized signal (bottom).
 
 ![H3K9ac titration
 dataset](GGplot_quarto_files/H3K9ac_titration_dataset_example.png)
@@ -249,9 +255,9 @@ ggplot() +
 ![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-9-1.png)
 
 The above plot is technically showing the data we are interested in, but
-it’s not overly informative. First, by setting color equal to our
-experimental variable (the % of interphase cells in each sample), we see
-the expected titration pattern has emerged.
+it’s not overly informative compared to our figure. First, by setting
+color equal to our experimental variable (the % of interphase cells in
+each sample), we see the expected titration pattern has emerged.
 
 ``` r
 hist_tss_hg38_tutorial_spikenorm_LP78_long %>% 
@@ -286,6 +292,130 @@ ggplot() +
 
 ![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-11-1.png)
 
+Custom colors from `RColorBrewer`:
+
+``` r
+library(RColorBrewer)
+```
+
+``` r
+hist_tss_hg38_tutorial_spikenorm_LP78_long %>% 
+  filter(grepl("_..normalized", Sample)) %>%
+ggplot() + 
+  aes(x = Distance_from_tss, y = Coverage, 
+      group = Sample, 
+      color = as.factor(as.numeric(timepoint))) + 
+  geom_line() + 
+  labs(title = "H3K9ac around RefSeq TSSs", 
+       x = "Distance from TSS", y = "ChIP-wrangler normalized Coverage", 
+       color = "% Interphase Cells") +
+scale_color_manual(
+      values = colorRampPalette(brewer.pal(8, "Spectral"))(6),
+      name = "% Interphase (Human)")
+```
+
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-13-1.png)
+
+`ChIP-wrangler` normalizes data 3 ways: to each of two spike-in species,
+and to the average of both (dual spike-in normalization). Currently we
+are plotting the results of dual spike-in normalization.
+
+``` r
+knitr::kable(head(hist_tss_hg38_tutorial_spikenorm_LP78_long))
+```
+
+| Distance_from_tss | Sample | Coverage | cell | treatment | timepoint | biorep | antibody | techrep |
+|---:|:---|---:|:---|:---|:---|:---|:---|:---|
+| -2000 | HelaS3_0sync_100inter_1_H3K9ac_1.fly.normalized.tagdir.Coverage | 3.620835 | HelaS3 | 0sync | 100 | 1 | H3K9ac | 1.fly.normalized.tagdir.Coverage |
+| -2000 | HelaS3_0sync_100inter_1_H3K9ac_1.normalized.tagdir.Coverage | 3.372679 | HelaS3 | 0sync | 100 | 1 | H3K9ac | 1.normalized.tagdir.Coverage |
+| -2000 | HelaS3_0sync_100inter_1_H3K9ac_1.yeast.normalized.tagdir.Coverage | 3.147081 | HelaS3 | 0sync | 100 | 1 | H3K9ac | 1.yeast.normalized.tagdir.Coverage |
+| -2000 | HelaS3_0sync_100inter_1_H3K9ac_2.fly.normalized.tagdir.Coverage | 2.847577 | HelaS3 | 0sync | 100 | 1 | H3K9ac | 2.fly.normalized.tagdir.Coverage |
+| -2000 | HelaS3_0sync_100inter_1_H3K9ac_2.normalized.tagdir.Coverage | 2.894451 | HelaS3 | 0sync | 100 | 1 | H3K9ac | 2.normalized.tagdir.Coverage |
+| -2000 | HelaS3_0sync_100inter_1_H3K9ac_2.yeast.normalized.tagdir.Coverage | 2.917888 | HelaS3 | 0sync | 100 | 1 | H3K9ac | 2.yeast.normalized.tagdir.Coverage |
+
+We next reformat the dataframe so that we can plot the results of
+normalizing to each spike-in species separately.
+
+``` r
+hist_tss_hg38_tutorial_spikenorm_LP78_clean <- hist_tss_hg38_tutorial_spikenorm_LP78_long %>% 
+ #   filter(grepl("100inter|_0inter", Sample)) %>% 
+    filter(grepl(".[[:alpha:]]+.normalized", Sample)) %>% 
+mutate(
+    # detect normalization method
+    method = case_when(
+      str_detect(Sample, "\\.fly\\.normalized\\.tagdir\\.Coverage$")   ~ "flynorm",
+      str_detect(Sample, "\\.yeast\\.normalized\\.tagdir\\.Coverage$") ~ "yeastnorm",
+      str_detect(Sample, "\\.normalized\\.tagdir\\.Coverage$")         ~ "norm",
+      TRUE ~ "other"
+    ),
+    
+    # remove suffixes to get the base sample name
+    base_sample = Sample %>%
+      str_remove("\\.fly\\.normalized\\.tagdir\\.Coverage$") %>%
+      str_remove("\\.yeast\\.normalized\\.tagdir\\.Coverage$") %>%
+      str_remove("\\.normalized\\.tagdir\\.Coverage$"),
+    
+    # clean techrep column to keep only replicate number
+    techrep = str_replace(techrep, "\\..*", "")
+  ) %>%
+  
+  # keep relevant columns and pivot
+  select(Distance_from_tss, base_sample, cell, treatment, timepoint, biorep, antibody, techrep, method, Coverage) %>%
+  pivot_wider(names_from = method, values_from = Coverage) %>%
+  
+  # compute confidence and dual normalization metrics
+  mutate(
+    confidence = abs(flynorm - yeastnorm),
+    dualnorm = (flynorm + yeastnorm) / 2
+  )
+
+hist_tss_hg38_spikenorm_LP78_formatted <- hist_tss_hg38_tutorial_spikenorm_LP78_clean %>%
+  pivot_longer(
+    cols = c(flynorm, yeastnorm),
+    names_to = "spike.in",
+    values_to = "Normalized.Coverage"
+  )
+```
+
+``` r
+knitr::kable(head(hist_tss_hg38_spikenorm_LP78_formatted))
+```
+
+| Distance_from_tss | base_sample | cell | treatment | timepoint | biorep | antibody | techrep | confidence | dualnorm | spike.in | Normalized.Coverage |
+|---:|:---|:---|:---|:---|:---|:---|:---|---:|---:|:---|---:|
+| -2000 | HelaS3_0sync_100inter_1_H3K9ac_1 | HelaS3 | 0sync | 100 | 1 | H3K9ac | 1 | 0.4737542 | 3.383958 | flynorm | 3.620835 |
+| -2000 | HelaS3_0sync_100inter_1_H3K9ac_1 | HelaS3 | 0sync | 100 | 1 | H3K9ac | 1 | 0.4737542 | 3.383958 | yeastnorm | 3.147081 |
+| -2000 | HelaS3_0sync_100inter_1_H3K9ac_2 | HelaS3 | 0sync | 100 | 1 | H3K9ac | 2 | 0.0703106 | 2.882733 | flynorm | 2.847577 |
+| -2000 | HelaS3_0sync_100inter_1_H3K9ac_2 | HelaS3 | 0sync | 100 | 1 | H3K9ac | 2 | 0.0703106 | 2.882733 | yeastnorm | 2.917888 |
+| -2000 | HelaS3_0sync_100inter_1_H3K9ac_3 | HelaS3 | 0sync | 100 | 1 | H3K9ac | 3 | 0.2460564 | 2.852017 | flynorm | 2.975045 |
+| -2000 | HelaS3_0sync_100inter_1_H3K9ac_3 | HelaS3 | 0sync | 100 | 1 | H3K9ac | 3 | 0.2460564 | 2.852017 | yeastnorm | 2.728989 |
+
+``` r
+ggplot(hist_tss_hg38_spikenorm_LP78_formatted) +
+aes(x = Distance_from_tss,
+    group = interaction(base_sample, spike.in), color = as.factor(as.numeric(str_remove(timepoint, "inter")))) +
+geom_line(aes(linetype = spike.in, y = Normalized.Coverage), linewidth = 1.1, alpha = 0.9) +
+geom_ribbon(
+      aes(ymin = dualnorm - (confidence / 2), ymax = dualnorm + (confidence / 2),
+        fill = as.factor(as.numeric(str_remove(timepoint, "inter"))),
+        group = interaction(base_sample, spike.in)
+      ), alpha = 0.2, color = NA ) +
+scale_color_manual(
+      values = colorRampPalette(brewer.pal(8, "Spectral"))(6),
+      name = "% Interphase (Human)",
+      labels = as.numeric(unique(str_remove(hist_tss_hg38_spikenorm_LP78_formatted$timepoint, "inter"))))  +
+    scale_linetype_manual(
+      values = c("dotted","dashed"),
+      name = "Spike-in species",
+      labels = unique(hist_tss_hg38_spikenorm_LP78_formatted$spike.in))  +
+    scale_fill_manual(
+      values = colorRampPalette(brewer.pal(8, "Spectral"))(6),
+      guide = "none") +
+labs(x = "Distance from TSS Center", y = "ChIP-wrangler Normalized H3K9ac")
+```
+
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-17-1.png)
+
 ## Histogram
 
 ``` r
@@ -297,7 +427,7 @@ density_hist +
   ggtitle("Histogram & Density Curve of Sepal Width")
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-12-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-18-1.png)
 
 ## Pie
 
@@ -334,7 +464,7 @@ input_piechart <- ggplot(input_presence, aes(x="", y= paper_count, fill=input_st
 input_piechart
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-14-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-20-1.png)
 
 ## Scatterplot
 
@@ -343,7 +473,7 @@ ggplot(diamonds, aes(carat, price, color = clarity)) +
   geom_point()
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-15-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-21-1.png)
 
 Remove outline of point (for scatterplots with many overlapping points)
 
@@ -352,7 +482,7 @@ ggplot(diamonds, aes(carat, price, color = clarity)) +
   geom_point(stroke = NA, alpha = 0.3)
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-16-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-22-1.png)
 
 NOTE: for scatterplots the title in labs() must come first and be lower
 case
@@ -373,7 +503,7 @@ ggplot(data, aes(x=x, y=y) ) +
   geom_point()
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-17-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-23-1.png)
 
 In the above graph, where is the highest density of points?
 
@@ -389,7 +519,7 @@ ggplot(data, aes(x=x, y=y) ) +
   theme_bw()
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-18-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-24-1.png)
 
 Make it pretty:
 
@@ -401,7 +531,7 @@ ggplot(data, aes(x=x, y=y) ) +
   theme_bw()
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-19-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-25-1.png)
 
 ### 2D Density plot with Hex bins
 
@@ -415,7 +545,7 @@ ggplot(data, aes(x=x, y=y)) +
     Caused by error in `compute_group()`:
     ! The package "hexbin" is required for `stat_bin_hex()`.
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-20-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-26-1.png)
 
 ``` r
 # Bin size control + color palette
@@ -428,7 +558,7 @@ ggplot(data, aes(x=x, y=y)) +
     Caused by error in `compute_group()`:
     ! The package "hexbin" is required for `stat_bin_hex()`.
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-21-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-27-1.png)
 
 ### 2d distribution with geom_density_2d or stat_density_2d
 
@@ -439,7 +569,7 @@ ggplot(data, aes(x=x, y=y) ) +
   geom_density_2d()
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-22-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-28-1.png)
 
 Area only
 
@@ -451,7 +581,7 @@ ggplot(data, aes(x=x, y=y) ) +
     Warning: The dot-dot notation (`..level..`) was deprecated in ggplot2 3.4.0.
     ℹ Please use `after_stat(level)` instead.
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-23-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-29-1.png)
 
 Area + Contour
 
@@ -461,7 +591,7 @@ ggplot(data, aes(x=x, y=y) ) +
                   geom = "polygon", colour="white")
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-24-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-30-1.png)
 
 Using Raster
 
@@ -475,7 +605,7 @@ ggplot(data, aes(x=x, y=y) ) +
   )
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-25-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-31-1.png)
 
 ## Scatterplot + Smoothing Line
 
@@ -488,7 +618,7 @@ ggplot(diamonds, aes(carat, price, color = clarity)) +
 
     `geom_smooth()` using method = 'gam' and formula = 'y ~ s(x, bs = "cs")'
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-26-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-32-1.png)
 
 ## Add Linear model
 
@@ -501,7 +631,7 @@ ggplot(diamonds, aes(carat, price, color = clarity)) +
 
     `geom_smooth()` using formula = 'y ~ x'
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-27-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-33-1.png)
 
 ## Text Scatter Plot
 
@@ -518,7 +648,7 @@ plt_mpg_vs_wt +
     Warning: Use of `mtcars$cyl` is discouraged.
     ℹ Use `cyl` instead.
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-28-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-34-1.png)
 
 Above plot is the weight of the car vs the miles per gallon, with each
 “point” being labeled with the number of cylinders the car has (a
@@ -531,7 +661,7 @@ ggplot(mtcars, aes(wt, mpg, color = cyl)) +
   geom_text(label = rownames(mtcars), color = "red")
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-29-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-35-1.png)
 
 ## Barplots - Stacked
 
@@ -541,7 +671,7 @@ ggplot(iris, aes(Sepal.Length, fill = Species)) +
   labs(x = "Species", y = "Sepal Length")
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-30-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-36-1.png)
 
 ### Manual Color Scheme and Labeling
 
@@ -554,7 +684,7 @@ ggplot(iris, aes(Sepal.Length, fill = Species)) +
   scale_fill_manual("Transmission", values = palette)
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-31-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-37-1.png)
 
 ## Barplots - side by side
 
@@ -566,7 +696,7 @@ ggplot(iris, aes(Sepal.Length, fill = Species)) +
   scale_fill_manual("Species", values = palette) 
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-32-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-38-1.png)
 
 ## Violin Plot
 
@@ -575,7 +705,7 @@ ggplot(data = diamonds, aes(x=cut, y=price, fill = cut)) +
   geom_violin()
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-33-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-39-1.png)
 
 ## Dotplot (2 category variables)
 
@@ -618,7 +748,7 @@ ggplot(diamonds) +
 
     Picking joint bandwidth of 403
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-36-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-42-1.png)
 
 Can also make a histogram:
 
@@ -629,7 +759,7 @@ ggplot(diamonds) +
   theme(legend.position = "none")
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-37-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-43-1.png)
 
 You can also map the color `fill` to a numeric variable (for instance
 the price on the x axis). There are two requirements:
@@ -657,7 +787,7 @@ ggplot(diamonds) +
 
     Picking joint bandwidth of 0.144
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-38-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-44-1.png)
 
 ## Marginal Histograms
 
@@ -673,7 +803,7 @@ diamonds_scatter <- ggplot(diamonds, aes(carat, price, color = clarity)) +
 ggMarginal(diamonds_scatter, groupColour = TRUE, groupFill = TRUE)
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-40-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-46-1.png)
 
 # Add-ons
 
@@ -698,7 +828,32 @@ ggplot(mtcars, aes(wt, mpg, group = cyl)) +
   scale_alpha_manual(values = c(0.2, 0.5, 1), name = "Cylinders", labels = c("4", "6", "8"))
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-41-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-47-1.png)
+
+In our example dataset, we make the linetype vary based on which species
+the data is normailzed to: we plot fly-normalized data with a dotted
+line, and yeast-normalized data with a dashed line.
+
+``` r
+ggplot(hist_tss_hg38_spikenorm_LP78_formatted) +
+aes(x = Distance_from_tss,
+    group = interaction(base_sample, spike.in), color = as.factor(as.numeric(str_remove(timepoint, "inter")))) +
+geom_line(aes(linetype = spike.in, y = Normalized.Coverage), linewidth = 1.1, alpha = 0.9) +
+scale_color_manual(
+      values = colorRampPalette(brewer.pal(8, "Spectral"))(6),
+      name = "% Interphase (Human)",
+      labels = as.numeric(unique(str_remove(hist_tss_hg38_spikenorm_LP78_formatted$timepoint, "inter"))))  +
+    scale_linetype_manual(
+      values = c("dotted","dashed"),
+      name = "Spike-in species",
+      labels = unique(hist_tss_hg38_spikenorm_LP78_formatted$spike.in))  +
+    scale_fill_manual(
+      values = colorRampPalette(brewer.pal(8, "Spectral"))(6),
+      guide = "none") +
+labs(x = "Distance from TSS Center", y = "ChIP-wrangler Normalized H3K9ac")
+```
+
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-48-1.png)
 
 ## Faceting
 
@@ -712,7 +867,36 @@ ggplot(diamonds, aes(carat, price, color = clarity)) +
 
     `geom_smooth()` using method = 'gam' and formula = 'y ~ s(x, bs = "cs")'
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-42-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-49-1.png)
+
+In our example dataset, we can split our graph into facets for each
+technical replicate.
+
+``` r
+ggplot(hist_tss_hg38_spikenorm_LP78_formatted) +
+aes(x = Distance_from_tss,
+    group = interaction(base_sample, spike.in), color = as.factor(as.numeric(str_remove(timepoint, "inter")))) +
+geom_line(aes(linetype = spike.in, y = Normalized.Coverage), linewidth = 1.1, alpha = 0.9) +
+geom_ribbon(
+      aes(ymin = dualnorm - (confidence / 2), ymax = dualnorm + (confidence / 2),
+        fill = as.factor(as.numeric(str_remove(timepoint, "inter"))),
+        group = interaction(base_sample, spike.in)
+      ), alpha = 0.2, color = NA ) +
+scale_color_manual(
+      values = colorRampPalette(brewer.pal(8, "Spectral"))(6),
+      name = "% Interphase (Human)")  +
+    scale_linetype_manual(
+      values = c("dotted","dashed"),
+      name = "Spike-in species",
+      labels = unique(hist_tss_hg38_spikenorm_LP78_formatted$spike.in))  +
+    scale_fill_manual(
+      values = colorRampPalette(brewer.pal(8, "Spectral"))(6),
+      guide = "none") +
+labs(x = "Distance from TSS Center", y = "ChIP-wrangler Normalized H3K9ac") + 
+  facet_wrap(~ techrep)
+```
+
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-50-1.png)
 
 ### Subplots in columns and rows (split by 2 variables)
 
@@ -789,7 +973,7 @@ ggplot(diamonds) +
 
     Picking joint bandwidth of 0.306
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-45-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-53-1.png)
 
 ### Faceting and zooming on subset of plot
 
@@ -876,7 +1060,7 @@ ggplot(iris) +
   geom_point()
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-51-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-59-1.png)
 
 Jitter
 
@@ -886,7 +1070,7 @@ ggplot(iris) +
   geom_jitter()
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-52-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-60-1.png)
 
 Or
 
@@ -896,7 +1080,7 @@ ggplot(iris) +
   geom_point(position= "jitter")
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-53-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-61-1.png)
 
 ### Legend positioning
 
@@ -917,7 +1101,7 @@ ggplot(iris) +
     3.5.0.
     ℹ Please use the `legend.position.inside` argument of `theme()` instead.
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-54-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-62-1.png)
 
 Add border to legend if inside graph to reduce chance of
 misinterpretation:
@@ -933,7 +1117,7 @@ ggplot(iris) +
                                     colour ="grey20"))
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-55-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-63-1.png)
 
 ## Plot on log scale
 
@@ -946,7 +1130,7 @@ ggplot(iris) +
   scale_x_log10() + scale_y_log10()
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-56-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-64-1.png)
 
 ## Set x and y axes
 
@@ -968,7 +1152,7 @@ ggplot(iris) +
     Warning: Removed 13 rows containing missing values or values outside the scale range
     (`geom_point()`).
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-57-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-65-1.png)
 
 ### Strategy 2: coord_cartesian
 
@@ -984,7 +1168,7 @@ ggplot(iris) +
   coord_cartesian(xlim = c(4, 7), ylim = c(1, 5))
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-58-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-66-1.png)
 
 ## Add regression line
 
@@ -1002,7 +1186,7 @@ ggplot(iris) +
 
     `geom_smooth()` using formula = 'y ~ x'
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-59-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-67-1.png)
 
 ## Add x = y line
 
@@ -1060,7 +1244,7 @@ ggplot(data = acadia) +
 
 ## R Color Brewer
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-63-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-71-1.png)
 
 Get hex codes from the color schemes:
 
@@ -1099,9 +1283,7 @@ library(unikn) # library needed for plot below
 
     Welcome to unikn (v1.0.0)!
 
-    Try naming the colors of these words:
-
-    black  red  green  blue  snow  yellow
+    usecol() allows changing and using color palettes.
 
 ``` r
 n <- 10
@@ -1127,7 +1309,7 @@ seecol(list(h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, h11, h12, h13, h15),
        pal_names = c("Dynamic", "Earth", "Terrain", "Berlin", "Oslo", "Lajolla", "Cork", "Vik", "Fall", "Sunset", "Purple-Orange", "Dark-Mint", "Peach", "Roma"))
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-67-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-75-1.png)
 
 See all hcl palettes:
 
@@ -1195,27 +1377,27 @@ hcl.swatch <- function(type = NULL, n = 5, nrow = 11,
 hcl.swatch("qualitative")
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-68-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-76-1.png)
 
 ``` r
 hcl.swatch("sequential")
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-69-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-77-1.png)
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-69-2.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-77-2.png)
 
 ``` r
 hcl.swatch("diverging")
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-70-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-78-1.png)
 
 ``` r
 hcl.swatch("divergingx")
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-71-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-79-1.png)
 
 ## Manual Color Scheme and Labeling
 
@@ -1230,7 +1412,7 @@ ggplot(iris, aes(Petal.Width, fill = Species)) +
   scale_fill_manual("Species", values = iris_palette)
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-72-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-80-1.png)
 
 # Labels
 
@@ -1264,7 +1446,7 @@ ggplot(iris) +
   )
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-73-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-81-1.png)
 
 For bar/violin/similar: `scale_fill_discrete`
 
@@ -1294,7 +1476,7 @@ ggplot(data=df, aes(x = date, y = price)) +
   geom_line()
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-75-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-83-1.png)
 
 Format dates:
 
@@ -1312,14 +1494,14 @@ ggplot(data=df, aes(x = date, y = price)) +
   scale_x_date(date_labels = "%b/%d")
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-76-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-84-1.png)
 
 ``` r
 ggplot(data=df, aes(x = date, y = price)) +
   geom_line() + scale_x_date(date_labels = "%U")
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-77-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-85-1.png)
 
 ## format axes numbers
 
@@ -1333,7 +1515,7 @@ ggplot(data = gapminder %>% filter(year == 2007) %>% arrange(-pop) %>% top_n(10,
   geom_bar(stat = "identity")
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-78-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-86-1.png)
 
 ### full numbers -\> Add commas
 
@@ -1346,7 +1528,7 @@ ggplot(data = gapminder %>% filter(year == 2007) %>% arrange(-pop) %>% top_n(10,
   scale_y_continuous(labels = scales::comma)
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-79-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-87-1.png)
 
 ### Full numbers -\> Millions or Billions
 
@@ -1430,4 +1612,4 @@ grid.arrange(p1, p2, p3, p4, p5,
   widths = c(5,6,5))
 ```
 
-![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-84-1.png)
+![](GGplot_quarto_files/figure-commonmark/unnamed-chunk-92-1.png)

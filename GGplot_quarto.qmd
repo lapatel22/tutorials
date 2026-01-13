@@ -16,7 +16,7 @@ theme_set(theme_classic())
 
 # Example dataset
 
-Titration of mitotic/interphase HeLa-S3 cells: from our preprint [here](https://pubmed.ncbi.nlm.nih.gov/41394721/)
+Titration of mitotic/interphase HeLa-S3 cells: from our preprint [here](https://pubmed.ncbi.nlm.nih.gov/41394721/). H3K9ac levels were varied by mixing mitotic cells (known to have low H3K9ac) with unsynchronized/interphase cells (higher H3K9ac) in known ratios to create a standard curve. The proportions of cells used are on the left side of the figure below. On the right, a histogram of H3K9ac signal is created first for traditional read-depth normalized signal (top) and ChIP-wrangler-normalized signal (bottom). 
 
 ![H3K9ac titration dataset](GGplot_quarto_files/H3K9ac_titration_dataset_example.png) 
 
@@ -144,7 +144,7 @@ ggplot() +
   geom_line()
 ```
 
-The above plot is technically showing the data we are interested in, but it's not overly informative. First, by setting color equal to our experimental variable (the % of interphase cells in each sample), we see the expected titration pattern has emerged. 
+The above plot is technically showing the data we are interested in, but it's not overly informative compared to our figure. First, by setting color equal to our experimental variable (the % of interphase cells in each sample), we see the expected titration pattern has emerged. 
 
 ```{r, fig.width=7, fig.height=4}
 hist_tss_hg38_tutorial_spikenorm_LP78_long %>% 
@@ -170,6 +170,106 @@ ggplot() +
        x = "Distance from TSS", y = "ChIP-wrangler normalized Coverage", 
        color = "% Interphase Cells")
 ```
+
+Custom colors from `RColorBrewer`: 
+
+```{r}
+library(RColorBrewer)
+```
+
+```{r}
+hist_tss_hg38_tutorial_spikenorm_LP78_long %>% 
+  filter(grepl("_..normalized", Sample)) %>%
+ggplot() + 
+  aes(x = Distance_from_tss, y = Coverage, 
+      group = Sample, 
+      color = as.factor(as.numeric(timepoint))) + 
+  geom_line() + 
+  labs(title = "H3K9ac around RefSeq TSSs", 
+       x = "Distance from TSS", y = "ChIP-wrangler normalized Coverage", 
+       color = "% Interphase Cells") +
+scale_color_manual(
+      values = colorRampPalette(brewer.pal(8, "Spectral"))(6),
+      name = "% Interphase (Human)")
+```
+
+`ChIP-wrangler` normalizes data 3 ways: to each of two spike-in species, and to the average of both (dual spike-in normalization). Currently we are plotting the results of dual spike-in normalization.
+
+```{r}
+knitr::kable(head(hist_tss_hg38_tutorial_spikenorm_LP78_long))
+```
+
+We next reformat the dataframe so that we can plot the results of normalizing to each spike-in species separately. 
+
+```{r}
+hist_tss_hg38_tutorial_spikenorm_LP78_clean <- hist_tss_hg38_tutorial_spikenorm_LP78_long %>% 
+ #   filter(grepl("100inter|_0inter", Sample)) %>% 
+    filter(grepl(".[[:alpha:]]+.normalized", Sample)) %>% 
+mutate(
+    # detect normalization method
+    method = case_when(
+      str_detect(Sample, "\\.fly\\.normalized\\.tagdir\\.Coverage$")   ~ "flynorm",
+      str_detect(Sample, "\\.yeast\\.normalized\\.tagdir\\.Coverage$") ~ "yeastnorm",
+      str_detect(Sample, "\\.normalized\\.tagdir\\.Coverage$")         ~ "norm",
+      TRUE ~ "other"
+    ),
+    
+    # remove suffixes to get the base sample name
+    base_sample = Sample %>%
+      str_remove("\\.fly\\.normalized\\.tagdir\\.Coverage$") %>%
+      str_remove("\\.yeast\\.normalized\\.tagdir\\.Coverage$") %>%
+      str_remove("\\.normalized\\.tagdir\\.Coverage$"),
+    
+    # clean techrep column to keep only replicate number
+    techrep = str_replace(techrep, "\\..*", "")
+  ) %>%
+  
+  # keep relevant columns and pivot
+  select(Distance_from_tss, base_sample, cell, treatment, timepoint, biorep, antibody, techrep, method, Coverage) %>%
+  pivot_wider(names_from = method, values_from = Coverage) %>%
+  
+  # compute confidence and dual normalization metrics
+  mutate(
+    confidence = abs(flynorm - yeastnorm),
+    dualnorm = (flynorm + yeastnorm) / 2
+  )
+
+hist_tss_hg38_spikenorm_LP78_formatted <- hist_tss_hg38_tutorial_spikenorm_LP78_clean %>%
+  pivot_longer(
+    cols = c(flynorm, yeastnorm),
+    names_to = "spike.in",
+    values_to = "Normalized.Coverage"
+  )
+```
+
+```{r}
+knitr::kable(head(hist_tss_hg38_spikenorm_LP78_formatted))
+```
+
+```{r}
+ggplot(hist_tss_hg38_spikenorm_LP78_formatted) +
+aes(x = Distance_from_tss,
+    group = interaction(base_sample, spike.in), color = as.factor(as.numeric(str_remove(timepoint, "inter")))) +
+geom_line(aes(linetype = spike.in, y = Normalized.Coverage), linewidth = 1.1, alpha = 0.9) +
+geom_ribbon(
+      aes(ymin = dualnorm - (confidence / 2), ymax = dualnorm + (confidence / 2),
+        fill = as.factor(as.numeric(str_remove(timepoint, "inter"))),
+        group = interaction(base_sample, spike.in)
+      ), alpha = 0.2, color = NA ) +
+scale_color_manual(
+      values = colorRampPalette(brewer.pal(8, "Spectral"))(6),
+      name = "% Interphase (Human)",
+      labels = as.numeric(unique(str_remove(hist_tss_hg38_spikenorm_LP78_formatted$timepoint, "inter"))))  +
+    scale_linetype_manual(
+      values = c("dotted","dashed"),
+      name = "Spike-in species",
+      labels = unique(hist_tss_hg38_spikenorm_LP78_formatted$spike.in))  +
+    scale_fill_manual(
+      values = colorRampPalette(brewer.pal(8, "Spectral"))(6),
+      guide = "none") +
+labs(x = "Distance from TSS Center", y = "ChIP-wrangler Normalized H3K9ac")
+```
+
 
 ## Histogram
 
@@ -468,6 +568,28 @@ ggplot(mtcars, aes(wt, mpg, group = cyl)) +
   scale_alpha_manual(values = c(0.2, 0.5, 1), name = "Cylinders", labels = c("4", "6", "8"))
 ```
 
+In our example dataset, we make the linetype vary based on which species the data is normailzed to: we plot fly-normalized data with a dotted line, and yeast-normalized data with a dashed line.
+
+```{r}
+ggplot(hist_tss_hg38_spikenorm_LP78_formatted) +
+aes(x = Distance_from_tss,
+    group = interaction(base_sample, spike.in), color = as.factor(as.numeric(str_remove(timepoint, "inter")))) +
+geom_line(aes(linetype = spike.in, y = Normalized.Coverage), linewidth = 1.1, alpha = 0.9) +
+scale_color_manual(
+      values = colorRampPalette(brewer.pal(8, "Spectral"))(6),
+      name = "% Interphase (Human)",
+      labels = as.numeric(unique(str_remove(hist_tss_hg38_spikenorm_LP78_formatted$timepoint, "inter"))))  +
+    scale_linetype_manual(
+      values = c("dotted","dashed"),
+      name = "Spike-in species",
+      labels = unique(hist_tss_hg38_spikenorm_LP78_formatted$spike.in))  +
+    scale_fill_manual(
+      values = colorRampPalette(brewer.pal(8, "Spectral"))(6),
+      guide = "none") +
+labs(x = "Distance from TSS Center", y = "ChIP-wrangler Normalized H3K9ac")
+```
+
+
 ## Faceting
 
 ### Subplots based on a categorical variable
@@ -476,6 +598,32 @@ ggplot(mtcars, aes(wt, mpg, group = cyl)) +
 ggplot(diamonds, aes(carat, price, color = clarity)) +
   geom_point(alpha = 0.5, stroke = NA) +
   geom_smooth() + facet_wrap(~ clarity)
+```
+
+In our example dataset, we can split our graph into facets for each technical replicate.
+
+```{r, fig.width = 11, fig.height = 4.5}
+ggplot(hist_tss_hg38_spikenorm_LP78_formatted) +
+aes(x = Distance_from_tss,
+    group = interaction(base_sample, spike.in), color = as.factor(as.numeric(str_remove(timepoint, "inter")))) +
+geom_line(aes(linetype = spike.in, y = Normalized.Coverage), linewidth = 1.1, alpha = 0.9) +
+geom_ribbon(
+      aes(ymin = dualnorm - (confidence / 2), ymax = dualnorm + (confidence / 2),
+        fill = as.factor(as.numeric(str_remove(timepoint, "inter"))),
+        group = interaction(base_sample, spike.in)
+      ), alpha = 0.2, color = NA ) +
+scale_color_manual(
+      values = colorRampPalette(brewer.pal(8, "Spectral"))(6),
+      name = "% Interphase (Human)")  +
+    scale_linetype_manual(
+      values = c("dotted","dashed"),
+      name = "Spike-in species",
+      labels = unique(hist_tss_hg38_spikenorm_LP78_formatted$spike.in))  +
+    scale_fill_manual(
+      values = colorRampPalette(brewer.pal(8, "Spectral"))(6),
+      guide = "none") +
+labs(x = "Distance from TSS Center", y = "ChIP-wrangler Normalized H3K9ac") + 
+  facet_wrap(~ techrep)
 ```
 
 ### Subplots in columns and rows (split by 2 variables)
